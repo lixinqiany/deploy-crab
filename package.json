@@ -1,0 +1,21 @@
+{
+  "name": "with-vite-react",
+  "author": "lixinqiany <lixinqiany@outlook.com>",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+  },
+  "devDependencies": {
+    "@turbo/gen": "^2.11.10",
+    "eslint": "10.9.1",
+    "prettier": "3.9.6",
+    "turbo": "^2.11.10"
+  },
+  "engines": {
+    "node": ">=24.20.0"
+  },
+  "packageManager": "pnpm@11.24.0"
+}
