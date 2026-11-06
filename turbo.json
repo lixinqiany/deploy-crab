@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/turbo/schema.json",
   "ui": "tui",
+  "globalDependencies": ["scripts/**"],
   "tasks": {
     "build": {
       "dependsOn": ["^build", "check-types"],
@@ -26,7 +27,12 @@
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true,
-      "passThroughEnv": ["PORT", "WEB_PORT"]
+      "passThroughEnv": [
+        "PORT",
+        "WEB_PORT",
+        "NODE_OPTIONS",
+        "VSCODE_INSPECTOR_OPTIONS"
+      ]
     },
     "start": {
       "cache": false,
