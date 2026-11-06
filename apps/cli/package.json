@@ -5,9 +5,9 @@
   "private": true,
   "scripts": {
     "dev": "tsx dev.ts",
-    "build": "tsc -p tsconfig.build.json",
-    "check-types": "tsc --noEmit",
-    "lint": "eslint . --max-warnings=0",
+    "build": "tsdown",
+    "check-types": "tsc --noEmit && tsc --noEmit -p ../../scripts/tsconfig.json",
+    "lint": "eslint . ../../scripts --max-warnings=0",
     "start": "node --enable-source-maps dist/index.js"
   },
   "devDependencies": {
@@ -16,6 +16,7 @@
     "@types/node": "^24.19.2",
     "@types/react": "19.3.0",
     "eslint": "10.9.1",
+    "tsdown": "0.23.7",
     "tsx": "4.23.15",
     "typescript": "^7.0.2"
   },

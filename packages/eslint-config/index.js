@@ -82,6 +82,7 @@ export const createConfig = (rootDirectory) =>
         'apps/cli/**/*.{ts,tsx}',
         'apps/server/**/*.ts',
         'packages/core/**/*.ts',
+        'scripts/**/*.ts',
         'apps/web/vite.config.ts',
       ],
       languageOptions: { globals: globals.node },

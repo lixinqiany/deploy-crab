@@ -2,8 +2,7 @@
   "extends": "./tsconfig.build.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "./.dev",
-    "tsBuildInfoFile": "./.dev/tsconfig.tsbuildinfo"
+    "outDir": "./.dev"
   },
   "include": ["src", "dev.ts"]
 }

@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import { prepareDataDirectory, type RuntimeMode } from '@deploy-crab/core';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
+import { AppModule } from './app.module';
 
 export async function bootstrap(options: { mode: RuntimeMode }) {
   // No runtime mode flag: unknown options (including --dev) fail before startup.
