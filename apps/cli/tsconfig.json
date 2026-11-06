@@ -1,9 +1,9 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
+  "include": ["src", "dev.ts"],
   "compilerOptions": {
-    // File Layout
-    "rootDir": "src",
-    "outDir": "dist",
+    // Editor and type-checking configuration; production emits use tsconfig.build.json.
+    "noEmit": true,
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
@@ -41,6 +41,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
 
-    "moduleResolution": "nodenext",
+    "moduleResolution": "nodenext"
   }
 }

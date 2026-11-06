@@ -1,12 +1,18 @@
 {
-  "name": "with-vite-react",
-  "author": "lixinqiany <lixinqiany@outlook.com>",
+  "name": "deploy-crab",
+  "version": "0.0.1",
+  "author": "lixinqiany <yulixinqian805@163.com>",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "dev:cli": "turbo watch dev --filter=@deploy-crab/cli --ui=tui",
+    "build:cli": "turbo run build --filter=@deploy-crab/cli",
+    "start:cli": "turbo run start --filter=@deploy-crab/cli --ui=tui",
+    "dev:server": "turbo watch dev --filter=@deploy-crab/server --ui=tui",
+    "build:server": "turbo run build --filter=@deploy-crab/server",
+    "start:server": "turbo run start --filter=@deploy-crab/server",
+    "dev:web": "turbo watch dev --filter=@deploy-crab/web --ui=tui",
+    "build:web": "turbo run build --filter=@deploy-crab/web",
+    "start:web": "turbo run start --filter=@deploy-crab/web"
   },
   "devDependencies": {
     "@turbo/gen": "^2.11.10",

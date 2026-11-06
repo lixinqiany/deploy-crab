@@ -1,32 +1,27 @@
 {
-  "name": "server",
-  "author": "lixinqiany <lixinqiany@outlook.com>",
-  "version": "1.0.0",
+  "name": "@deploy-crab/server",
+  "author": "lixinqiany <yulixinqian805@163.com>",
+  "version": "0.0.1",
   "description": "Nest TypeScript starter repository",
   "private": true,
   "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "nest build",
-    "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "dev": "nest start --path tsconfig.dev.json --entryFile dev",
+    "start": "node --enable-source-maps dist/main.js",
     "lint": "oxlint src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "dev": "nest start --watch"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
     "@deploy-crab/core": "workspace:*",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
-    "@nestjs/observe": "^0.3.0",
     "@nestjs/platform-express": "^12.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

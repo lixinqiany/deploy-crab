@@ -1,0 +1,9 @@
+{
+  "$schema": "../../node_modules/turbo/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "dev": { "interruptible": true, "interactive": true },
+    // 	允许任务通过 Turbo 的终端面板接收键盘输入
+    "start": { "interactive": true }
+  }
+}

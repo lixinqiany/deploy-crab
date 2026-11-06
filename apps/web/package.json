@@ -1,13 +1,13 @@
 {
-  "name": "web",
-  "author": "lixinqiany <lixinqiany@outlook.com>",
+  "name": "@deploy-crab/web",
+  "author": "lixinqiany <yulixinqian805@163.com>",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite --clearScreen false",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
+    "dev": "cross-env NODE_ENV=development vite --clearScreen false",
+    "build": "tsc --noEmit && cross-env NODE_ENV=production vite build",
+    "start": "vite preview",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
@@ -21,6 +21,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "6.1.1",
+    "cross-env": "10.1.0",
     "eslint": "10.9.1",
     "typescript": "7.0.2",
     "vite": "8.2.2"
