@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import react from '@eslint-react/eslint-plugin';
 import { defineConfig } from 'eslint/config';
 import prettier from 'eslint-config-prettier';
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -18,6 +19,22 @@ export const createConfig = (rootDirectory) =>
         '**/coverage/**',
         '**/*.tsbuildinfo',
       ],
+    },
+    {
+      linterOptions: {
+        reportUnusedDisableDirectives: 'error',
+        reportUnusedInlineConfigs: 'error',
+      },
+    },
+    {
+      files: ['**/*.{js,mjs,cjs,ts,tsx}'],
+      rules: {
+        eqeqeq: ['error', 'always', { null: 'ignore' }],
+        'no-var': 'error',
+        'prefer-const': 'error',
+        'array-callback-return': 'error',
+        'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
+      },
     },
     {
       files: ['**/*.{js,mjs,cjs}'],
@@ -41,10 +58,23 @@ export const createConfig = (rootDirectory) =>
           'error',
           { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
         ],
+        '@typescript-eslint/no-import-type-side-effects': 'error',
         '@typescript-eslint/no-unused-vars': [
           'error',
-          { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+          {
+            args: 'all',
+            argsIgnorePattern: '^_',
+            caughtErrors: 'all',
+            caughtErrorsIgnorePattern: '^_',
+            destructuredArrayIgnorePattern: '^_',
+            varsIgnorePattern: '^_',
+            ignoreRestSiblings: true,
+          },
         ],
+        '@typescript-eslint/switch-exhaustiveness-check': 'error',
+        '@typescript-eslint/return-await': ['error', 'in-try-catch'],
+        // TypeScript checks fallthrough and unreachable code for TS files.
+        'no-fallthrough': 'off',
       },
     },
     {
@@ -61,12 +91,32 @@ export const createConfig = (rootDirectory) =>
       languageOptions: { globals: globals.browser },
     },
     {
-      files: ['**/*.tsx'],
+      files: [
+        'apps/cli/**/*.{ts,tsx}',
+        'apps/web/src/**/*.{ts,tsx}',
+        'packages/ui/**/*.{ts,tsx}',
+      ],
       extends: [reactHooks.configs.flat.recommended],
+      plugins: { '@eslint-react': react },
+      // Keep Hooks under the official plugin; add JSX correctness separately.
+      rules: {
+        '@eslint-react/no-missing-key': 'error',
+        '@eslint-react/no-duplicate-key': 'error',
+        '@eslint-react/no-array-index-key': 'error',
+        '@eslint-react/jsx-no-children-prop-with-children': 'error',
+        '@eslint-react/jsx-no-comment-textnodes': 'error',
+      },
     },
     {
       files: ['apps/web/src/**/*.tsx', 'packages/ui/**/*.tsx'],
       extends: [reactRefresh.configs.vite],
+      // DOM rules must not apply to the Ink terminal UI.
+      rules: {
+        '@eslint-react/dom-no-dangerously-set-innerhtml-with-children': 'error',
+        '@eslint-react/dom-no-void-elements-with-children': 'error',
+        '@eslint-react/dom-no-script-url': 'error',
+        '@eslint-react/dom-no-unsafe-iframe-sandbox': 'error',
+      },
     },
     {
       files: ['apps/server/**/*.spec.ts', 'apps/server/test/**/*.ts'],

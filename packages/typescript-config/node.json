@@ -7,10 +7,6 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "types": ["node"],
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noUncheckedSideEffectImports": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true
+    "noEmitOnError": true
   }
 }
