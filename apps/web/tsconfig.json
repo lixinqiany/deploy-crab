@@ -1,8 +1,5 @@
 {
-  "extends": "@repo/typescript-config/vite.json",
-  "include": ["src"],
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "strictNullChecks": true
-  }
+  "extends": "@repo/typescript-config/react.json",
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "coverage"]
 }

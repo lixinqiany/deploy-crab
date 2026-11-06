@@ -2,11 +2,21 @@
   "name": "@repo/eslint-config",
   "author": "lixinqiany <yulixinqian805@163.com>",
   "version": "0.0.1",
-  "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
   "license": "MIT",
+  "scripts": {
+    "lint": "eslint . --max-warnings=0"
+  },
   "dependencies": {
     "@eslint/js": "10.0.1",
     "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.14.0",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.68.0"
   },
   "peerDependencies": {

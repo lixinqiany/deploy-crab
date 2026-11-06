@@ -1,12 +1,12 @@
-import { prepareDataDirectory, type RuntimeMode } from "@deploy-crab/core";
-import { Command } from "commander";
-import { Box, render, Text, useApp, useInput } from "ink";
+import { prepareDataDirectory, type RuntimeMode } from '@deploy-crab/core';
+import { Command } from 'commander';
+import { Box, render, Text, useApp, useInput } from 'ink';
 
 function App() {
   const { exit } = useApp();
 
   useInput((input) => {
-    if (input === "q") exit();
+    if (input === 'q') exit();
   });
 
   return (
@@ -21,9 +21,9 @@ function App() {
 
 export async function runCli(mode: RuntimeMode) {
   const program = new Command()
-    .name("deploy-crab")
-    .description("部署管理工具")
-    .version("0.0.1");
+    .name('deploy-crab')
+    .description('部署管理工具')
+    .version('0.0.1');
 
   program.action(async () => {
     await prepareDataDirectory(mode);

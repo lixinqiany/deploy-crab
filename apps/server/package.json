@@ -11,7 +11,8 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "dev": "nest start --path tsconfig.dev.json --entryFile dev",
     "start": "node --enable-source-maps dist/main.js",
-    "lint": "oxlint src/ test/",
+    "lint": "eslint . --max-warnings=0",
+    "check-types": "tsc --noEmit --incremental false",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
@@ -27,6 +28,8 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@nestjs/cli": "^12.0.0",
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
@@ -35,8 +38,7 @@
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
-    "oxlint": "^1.58.0",
-    "prettier": "^3.4.2",
+    "eslint": "10.9.1",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "tslib": "^2.8.1",

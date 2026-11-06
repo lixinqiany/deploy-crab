@@ -5,10 +5,14 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@types/node": "^24.19.2",
+    "eslint": "10.9.1",
     "typescript": "^7.0.2"
   },
   "type": "module",

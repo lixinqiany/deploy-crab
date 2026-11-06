@@ -1,8 +1,5 @@
 {
-  "extends": "@repo/typescript-config/react-library.json",
-  "include": ["."],
-  "exclude": ["node_modules"],
-  "compilerOptions": {
-    "strictNullChecks": true
-  }
+  "extends": "@repo/typescript-config/react.json",
+  "include": ["index.ts", "components"],
+  "exclude": ["node_modules", "dist", "coverage"]
 }

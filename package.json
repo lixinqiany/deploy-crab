@@ -4,17 +4,18 @@
   "author": "lixinqiany <yulixinqian805@163.com>",
   "private": true,
   "scripts": {
-    "dev:cli": "turbo watch dev --filter=@deploy-crab/cli --ui=tui",
+    "dev:cli": "turbo watch dev check-types lint --filter=@deploy-crab/cli --continue=dependencies-successful --ui=tui",
     "build:cli": "turbo run build --filter=@deploy-crab/cli",
     "start:cli": "turbo run start --filter=@deploy-crab/cli --ui=tui",
-    "dev:server": "turbo watch dev --filter=@deploy-crab/server --ui=tui",
+    "dev:server": "turbo watch dev check-types lint --filter=@deploy-crab/server --continue=dependencies-successful --ui=tui",
     "build:server": "turbo run build --filter=@deploy-crab/server",
     "start:server": "turbo run start --filter=@deploy-crab/server",
-    "dev:web": "turbo watch dev --filter=@deploy-crab/web --ui=tui",
+    "dev:web": "turbo watch dev check-types lint --filter=@deploy-crab/web --continue=dependencies-successful --ui=tui",
     "build:web": "turbo run build --filter=@deploy-crab/web",
     "start:web": "turbo run start --filter=@deploy-crab/web"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
     "@turbo/gen": "^2.11.10",
     "eslint": "10.9.1",
     "prettier": "3.9.6",
