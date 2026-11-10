@@ -1,5 +1,5 @@
 {
-  "name": "@repo/web",
+  "name": "@deploy-crab/web",
   "author": "lixinqiany <yulixinqian805@163.com>",
   "private": true,
   "version": "0.0.1",
@@ -12,13 +12,13 @@
     "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
-    "@repo/ui": "workspace:*",
+    "@deploy-crab/ui": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@deploy-crab/eslint-config": "workspace:*",
+    "@deploy-crab/typescript-config": "workspace:*",
     "@types/node": "^24.19.2",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",

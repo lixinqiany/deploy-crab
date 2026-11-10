@@ -16,7 +16,7 @@
         "${workspaceFolder}/packages/core/dist/**/*.js"
       ],
       "sourceMapPathOverrides": {
-        "webpack://@repo/server/*": "${workspaceFolder}/apps/server/*"
+        "webpack://@deploy-crab/server/*": "${workspaceFolder}/apps/server/*"
       },
       "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
     }

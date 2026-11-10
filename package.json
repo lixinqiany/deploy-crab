@@ -1,22 +1,22 @@
 {
-  "name": "ts-monorepo-template-with-react",
+  "name": "deploy-crab",
   "version": "0.0.1",
   "author": "lixinqiany <yulixinqian805@163.com>",
   "private": true,
   "scripts": {
-    "dev:server": "turbo watch dev check-types lint --filter=@repo/server --continue=dependencies-successful --ui=tui",
-    "build:server": "turbo run build --filter=@repo/server",
-    "start:server": "turbo run start --filter=@repo/server",
-    "dev:web": "turbo watch dev check-types lint --filter=@repo/web --continue=dependencies-successful --ui=tui",
-    "build:web": "turbo run build --filter=@repo/web",
-    "start:web": "turbo run start --filter=@repo/web"
+    "dev:server": "turbo watch dev check-types lint --filter=@deploy-crab/server --continue=dependencies-successful --ui=tui",
+    "build:server": "turbo run build --filter=@deploy-crab/server",
+    "start:server": "turbo run start --filter=@deploy-crab/server",
+    "dev:web": "turbo watch dev check-types lint --filter=@deploy-crab/web --continue=dependencies-successful --ui=tui",
+    "build:web": "turbo run build --filter=@deploy-crab/web",
+    "start:web": "turbo run start --filter=@deploy-crab/web"
   },
   "devDependencies": {
     "@pnpm/lockfile.fs": "1100.2.17",
     "@pnpm/lockfile.pruner": "1100.0.29",
     "@pnpm/types": "1102.1.3",
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@deploy-crab/eslint-config": "workspace:*",
+    "@deploy-crab/typescript-config": "workspace:*",
     "@turbo/gen": "^2.11.10",
     "@types/node": "24.19.2",
     "eslint": "10.9.1",
@@ -30,6 +30,6 @@
   },
   "packageManager": "pnpm@11.24.0",
   "type": "module",
-  "description": "TypeScript monorepo template with NestJS and optional React, powered by pnpm and Turborepo",
+  "description": "deploy-crab monorepo with NestJS and React, powered by pnpm and Turborepo",
   "license": "MIT"
 }

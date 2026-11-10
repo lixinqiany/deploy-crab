@@ -1,4 +1,4 @@
-# `@repo/core`
+# `@deploy-crab/core`
 
 Node 侧共享的运行逻辑。使用 tsdown 构建 ESM、`.d.ts` 和 source maps；类型声明通过独立声明转换生成，完整类型检查由 Turbo 的 `check-types` 前置任务完成。
 

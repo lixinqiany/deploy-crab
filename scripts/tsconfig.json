@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/typescript-config/node.json",
+  "extends": "@deploy-crab/typescript-config/node.json",
   "compilerOptions": {
     "noEmit": true,
     "erasableSyntaxOnly": true,

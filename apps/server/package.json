@@ -1,8 +1,8 @@
 {
-  "name": "@repo/server",
+  "name": "@deploy-crab/server",
   "author": "lixinqiany <yulixinqian805@163.com>",
   "version": "0.0.1",
-  "description": "Nest TypeScript starter repository",
+  "description": "deploy-crab backend API",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -20,7 +20,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
-    "@repo/core": "workspace:*",
+    "@deploy-crab/core": "workspace:*",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
@@ -32,8 +32,8 @@
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@deploy-crab/eslint-config": "workspace:*",
+    "@deploy-crab/typescript-config": "workspace:*",
     "@rspack/core": "^2.3.1",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",

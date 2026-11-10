@@ -1,4 +1,4 @@
-# @repo/typescript-config
+# @deploy-crab/typescript-config
 
 仓库内共享的 TypeScript 配置。应用和源码包通过 `extends` 选择运行环境，各自维护文件范围和构建产物路径。
 
@@ -6,15 +6,11 @@
 
 Server 保留 Nest 装饰器设置，由 Rspack / SWC 将开发和生产入口编译到 `.dev/`、`dist/`。core 通过 tsdown 构建 ESM、类型声明与源码映射。
 
-<!-- web:start -->
-
 Web 和 UI 继承 `react.json`，使用浏览器 DOM 类型、React JSX 与 Bundler 模块解析，两者的源码统一由 Vite 构建。UI 以后需要独立发布产物时，再增加自己的 `tsconfig.build.json`。
-
-<!-- web:end -->
 
 `include`、`exclude`、`rootDir`、`outDir`、增量编译缓存路径均放在使用方配置中。TypeScript 按声明路径的配置文件位置解析相对路径；放在共享包中会使路径指向共享包自身。[TypeScript 官方继承规则](https://www.typescriptlang.org/tsconfig/extends.html)
 
-使用方需要在 `devDependencies` 声明 `"@repo/typescript-config": "workspace:*"`。这既让 pnpm 链接配置包，也让 Turbo 将配置包识别为依赖，配置变化后重新计算相关任务缓存。
+使用方需要在 `devDependencies` 声明 `"@deploy-crab/typescript-config": "workspace:*"`。这既让 pnpm 链接配置包，也让 Turbo 将配置包识别为依赖，配置变化后重新计算相关任务缓存。
 
 新增应用时，从现有预设中选择运行环境；框架独有选项先留在应用配置中，多个应用确实共用时再提取预设。当前 Node 应用均经过打包器构建，所以与 Web 一样使用 Bundler 模块解析，允许相对 TypeScript 导入省略扩展名。只有将来增加由 `tsc` 直接输出并交给 Node 运行的包时，才需要单独的 NodeNext 预设。[TypeScript 官方模块解析说明](https://www.typescriptlang.org/tsconfig/moduleResolution.html)
 
@@ -43,10 +39,6 @@ Web 和 UI 继承 `react.json`，使用浏览器 DOM 类型、React JSX 与 Bund
 
 运行环境预设均启用 `noEmit`。Turbo 将 `check-types` 设为 `build` 的前置任务，类型错误会阻止执行构建，但不会删除上一次的 `dist`。运行转换由 tsdown、Rspack 或 Vite 完成。只有由 Node 原生运行的共享构建工具启用 `erasableSyntaxOnly`，业务源码不额外限制打包器支持的 TypeScript 语法。
 
-<!-- web:start -->
-
 Web 的 `vite/client` 声明允许 CSS 等资源导入。`noUncheckedSideEffectImports` 只能校验模块能否被类型系统解析；已有 `*.css` 通配声明时，CSS 文件是否真实存在仍由 Vite 构建检查。[TypeScript 官方说明](https://www.typescriptlang.org/tsconfig/noUncheckedSideEffectImports.html)
-
-<!-- web:end -->
 
 规则与开发命令见 [ESLint 配置说明](../eslint-config/README.md)。

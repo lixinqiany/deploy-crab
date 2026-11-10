@@ -1,4 +1,4 @@
-# @repo/eslint-config
+# @deploy-crab/eslint-config
 
 仓库统一使用 ESLint 10 flat config。根目录 `eslint.config.mjs` 调用 `createConfig(import.meta.dirname)`，各应用运行 `eslint . --max-warnings=0`，规则集中维护在本包。
 
@@ -14,13 +14,9 @@
 
 `index.js` 提供通用 JS/TS、Node 与 Server 测试规则，包括类型感知检查、Promise 处理、未使用变量、联合类型分支完整性和类型导入。`createConfig(rootDirectory, ...additionalConfigs)` 接收附加规则，最后统一应用 Prettier 的冲突关闭配置。
 
-<!-- web:start -->
+`react.js` 通过独立的 `@deploy-crab/eslint-config/react` 入口提供 React Hooks、JSX、DOM 基础和 Vite Fast Refresh 规则。根配置将 `reactConfig` 传入 `createConfig`。这些规则只作用于 Web/UI，Vite 配置文件使用 Node 全局变量。
 
-`react.js` 通过独立的 `@repo/eslint-config/react` 入口提供 React Hooks、JSX、DOM 基础和 Vite Fast Refresh 规则。根配置将 `reactConfig` 传入 `createConfig`。这些规则只作用于 Web/UI，Vite 配置文件使用 Node 全局变量。
-
-React 插件依赖与入口一起由 `--no-web` 裁剪。当前 JSX/DOM 基础规则不等于完整可访问性检查，后续接入 a11y 插件时应检查 ESLint 版本兼容性。
-
-<!-- web:end -->
+当前 JSX/DOM 基础规则不等于完整可访问性检查，后续接入 a11y 插件时应检查 ESLint 版本兼容性。
 
 ## 关键约定
 
@@ -46,7 +42,7 @@ pnpm exec turbo run build check-types lint
 pnpm exec prettier --check .
 
 # 只修复一个应用中的可自动修复问题
-pnpm --filter @repo/server exec eslint . --fix
+pnpm --filter @deploy-crab/server exec eslint . --fix
 ```
 
 共享包单独依赖 TypeScript 6.0.3，为 typescript-eslint 提供其支持的编译器 API；各应用现有的 TypeScript 编译器版本独立维护。升级时检查 [typescript-eslint 版本兼容范围](https://typescript-eslint.io/users/dependency-versions/)，不要仅因为应用升级就移除该依赖。

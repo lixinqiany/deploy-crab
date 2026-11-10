@@ -1,5 +1,5 @@
 import typescriptLogo from '/typescript.svg';
-import { Header, Counter } from '@repo/ui';
+import { Header, Counter } from '@deploy-crab/ui';
 
 export const App = () => (
   <div>

@@ -1,5 +1,5 @@
 {
-  "name": "@repo/ui",
+  "name": "@deploy-crab/ui",
   "author": "lixinqiany <yulixinqian805@163.com>",
   "version": "0.0.1",
   "exports": {
@@ -17,8 +17,8 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@deploy-crab/eslint-config": "workspace:*",
+    "@deploy-crab/typescript-config": "workspace:*",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "eslint": "10.9.1",

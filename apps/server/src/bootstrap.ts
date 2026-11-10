@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import { prepareDataDirectory, type RuntimeMode } from '@repo/core';
+import { prepareDataDirectory, type RuntimeMode } from '@deploy-crab/core';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';

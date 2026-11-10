@@ -25,13 +25,3 @@ pnpm exec eslint scripts --max-warnings=0
 ```
 
 交付验证应把应用的整个 `dist` 复制到仓库外，执行 `pnpm install --prod --frozen-lockfile` 和 `pnpm start`。
-
-## 可选初始化
-
-`init.ts --no-web` 只使用 Node 标准库，在安装依赖前裁剪前端，并更新配置与文档。无参数和 `--help` 只显示用法；默认模板无需初始化。裁剪后执行 `pnpm install --no-frozen-lockfile` 更新现有锁文件。
-
-`init.test.ts` 在临时副本中验证默认无修改、裁剪保留后端构建、参数错误、重复执行及安装后拒绝修改等行为：
-
-```sh
-node --test scripts/init.test.ts
-```

@@ -1,5 +1,5 @@
 {
-  "name": "@repo/core",
+  "name": "@deploy-crab/core",
   "author": "lixinqiany <yulixinqian805@163.com>",
   "version": "0.0.1",
   "private": true,
@@ -9,8 +9,8 @@
     "lint": "eslint . --max-warnings=0"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@deploy-crab/eslint-config": "workspace:*",
+    "@deploy-crab/typescript-config": "workspace:*",
     "@types/node": "^24.19.2",
     "eslint": "10.9.1",
     "tsdown": "0.23.7",
