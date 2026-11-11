@@ -1,4 +1,5 @@
 import React from 'react';
+import { Typography } from 'antd';
 
 interface HeaderProps {
   title: string;
@@ -6,8 +7,10 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ title }) => {
   return (
-    <header id="header">
-      <h1>{title}</h1>
+    <header id="header" className="mb-6">
+      <Typography.Title level={1} className="m-0">
+        {title}
+      </Typography.Title>
     </header>
   );
 };

@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
+import { Button } from 'antd';
 
 export const Counter: React.FC = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <button id="counter" type="button" onClick={() => setCount(count + 1)}>
+    <Button
+      id="counter"
+      type="primary"
+      htmlType="button"
+      className="min-w-32"
+      onClick={() => setCount((value) => value + 1)}
+    >
       {count}
-    </button>
+    </Button>
   );
 };
