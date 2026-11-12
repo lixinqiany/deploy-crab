@@ -1,5 +1,5 @@
 {
   "extends": "@deploy-crab/typescript-config/react.json",
-  "include": ["index.ts", "components"],
+  "include": ["components", "css-modules.d.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

@@ -3,9 +3,7 @@
   "author": "lixinqiany <yulixinqian805@163.com>",
   "version": "0.0.1",
   "exports": {
-    ".": "./index.ts",
-    "./counter": "./components/counter.tsx",
-    "./header": "./components/header.tsx"
+    "./*": "./components/*.tsx"
   },
   "license": "MIT",
   "scripts": {

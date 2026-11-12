@@ -13,10 +13,12 @@
   },
   "dependencies": {
     "@ant-design/cssinjs": "2.1.2",
+    "@ant-design/icons": "6.3.4",
     "@deploy-crab/ui": "workspace:*",
     "antd": "6.7.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-router": "8.5.1"
   },
   "devDependencies": {
     "@deploy-crab/eslint-config": "workspace:*",

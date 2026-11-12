@@ -1,14 +1,15 @@
+import './style.css';
 import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router/dom';
 import { StyleProvider } from '@ant-design/cssinjs';
 import { App as AntdApp, ConfigProvider } from 'antd';
-import { App } from './App';
-import './style.css';
+import { router } from './routes';
 
 createRoot(document.getElementById('app')!).render(
   <StyleProvider layer>
     <ConfigProvider>
       <AntdApp>
-        <App />
+        <RouterProvider router={router} />
       </AntdApp>
     </ConfigProvider>
   </StyleProvider>,

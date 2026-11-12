@@ -1,0 +1,28 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ant-color-bg-container, #fff);
+  border-inline-end: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+}
+
+.header {
+  flex-shrink: 0;
+  padding: 16px 20px;
+}
+
+.nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.menu {
+  border-inline-end: none !important;
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  border-top: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+}
