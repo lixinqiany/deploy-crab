@@ -5,6 +5,7 @@ import {
   type SidebarItem,
 } from '@deploy-crab/ui/layout/sidebar/Sidebar';
 import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
+import { useSidebarResize } from '@deploy-crab/ui/hooks/useSidebarResize';
 import { navRoutes } from '../routes/navigation';
 import CrabSvg from '../assets/crab.svg?react';
 
@@ -24,21 +25,30 @@ const findSelectedKey = (pathname: string) =>
 export const CrabShell = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { width, collapsed, resizing, animating, handleProps } =
+    useSidebarResize();
 
   return (
     <AppLayout
+      sidebarWidth={width}
+      resizeHandleProps={handleProps}
+      resizing={resizing}
+      animating={animating}
       sidebar={
         <Sidebar
           header={
             <div className="flex items-center gap-2 text-base font-semibold">
               <SvgIcon component={CrabSvg} size={30} />
-              <span>Deploy Crab</span>
+              {!collapsed && (
+                <span className="min-w-0 truncate">Deploy Crab</span>
+              )}
             </div>
           }
           items={sidebarItems}
           selectedKey={findSelectedKey(pathname)}
           onSelect={(key) => void navigate(key)}
           footer={<span className="text-xs text-slate-400">v0.0.1</span>}
+          collapsed={collapsed}
         />
       }
     >

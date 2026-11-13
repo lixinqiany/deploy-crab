@@ -3,6 +3,7 @@
   "author": "lixinqiany <yulixinqian805@163.com>",
   "version": "0.0.1",
   "exports": {
+    "./hooks/*": "./hooks/*.ts",
     "./*": "./components/*.tsx"
   },
   "license": "MIT",

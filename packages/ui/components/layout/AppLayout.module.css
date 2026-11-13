@@ -4,10 +4,55 @@
   overflow: hidden;
 }
 
+/* 拖动中鼠标可能离开把手，光标要保持住，文字也不能被选中 */
+.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
 .sider {
+  position: relative; /* 给 .handle 定位 */
   flex-shrink: 0;
   height: 100%;
   overflow: hidden;
+}
+
+/* 只在折叠/展开那一下带过渡；平时拖动不加，否则宽度跟不上鼠标 */
+.animating {
+  transition: width 0.2s ease;
+}
+
+.handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none; /* 触屏上别把拖动当成滚动 */
+}
+
+/* 可点区域保持 6px 好抓，看得见的只有贴边的 2px 细线 */
+.handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background-color 0.15s;
+}
+
+/* 悬停稍等一下再亮，鼠标只是路过时不会闪 */
+.handle:hover::after {
+  background: var(--ant-color-primary, #1677ff);
+  transition-delay: 0.2s;
+}
+
+.resizing .handle::after {
+  background: var(--ant-color-primary, #1677ff);
+  transition-delay: 0s;
 }
 
 .main {

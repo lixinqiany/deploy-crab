@@ -19,8 +19,10 @@ export interface SidebarProps {
   selectedKey?: string | undefined;
   /** 点击导航项时回调 */
   onSelect?: (key: string) => void;
-  /** 底部区域，如用户信息、设置入口 */
+  /** 底部区域，如用户信息、设置入口；折叠时隐藏 */
   footer?: ReactNode;
+  /** 折叠成只剩一列图标，悬停图标显示名称 */
+  collapsed?: boolean;
 }
 
 /** 侧边栏：header / 导航列表 / footer 三段，不依赖路由。 */
@@ -30,12 +32,18 @@ export const Sidebar = ({
   selectedKey,
   onSelect,
   footer,
+  collapsed = false,
 }: SidebarProps) => (
-  <div className={styles.sidebar}>
+  <div
+    className={
+      collapsed ? `${styles.sidebar} ${styles.collapsed}` : styles.sidebar
+    }
+  >
     {header != null && <div className={styles.header}>{header}</div>}
     <nav className={styles.nav}>
       <Menu
         mode="inline"
+        inlineCollapsed={collapsed}
         className={styles.menu}
         items={items.map<MenuItem>(({ key, label, icon }) => ({
           key,
@@ -46,6 +54,8 @@ export const Sidebar = ({
         onClick={({ key }) => onSelect?.(key)}
       />
     </nav>
-    {footer != null && <div className={styles.footer}>{footer}</div>}
+    {footer != null && !collapsed && (
+      <div className={styles.footer}>{footer}</div>
+    )}
   </div>
 );

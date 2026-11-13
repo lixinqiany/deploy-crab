@@ -9,11 +9,22 @@
 .header {
   flex-shrink: 0;
   padding: 16px 20px;
+  overflow: hidden;
+  white-space: nowrap; /* 宽度变化过程中文字不换行 */
+  transition: padding 0.2s ease;
+}
+
+/* 折叠时 header 里只剩图标，居中摆放 */
+.collapsed .header {
+  display: flex;
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .nav {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -21,8 +32,16 @@
   border-inline-end: none !important;
 }
 
+/* antd 折叠菜单自带 80px 宽，改成跟着侧栏走；图标靠 50% 内边距自动居中 */
+.menu:global(.ant-menu-inline-collapsed) {
+  width: 100%;
+}
+
 .footer {
   flex-shrink: 0;
   padding: 12px 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   border-top: 1px solid var(--ant-color-border-secondary, #f0f0f0);
 }
