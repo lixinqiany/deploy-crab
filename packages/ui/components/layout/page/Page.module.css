@@ -10,7 +10,8 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 24px;
-  background: var(--ant-color-bg-container, #fff);
+  /* 页头不单独铺底色，和内容区连成一片，只用底边线分隔 */
+  background: transparent;
   border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
 }
 

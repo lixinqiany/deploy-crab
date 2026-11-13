@@ -12,5 +12,15 @@
 @layer base {
   body {
     min-width: 320px;
+    background: #f9f9f8; /* 与 amberTheme.colorBgLayout（sand2）一致，避免回弹滚动时露白 */
+  }
+
+  :root {
+    /* 侧栏比主区域深半档（sand3），靠明度区分区域，而不是靠颜色 */
+    --sidebar-bg: #f1f0ef;
+  }
+
+  ::selection {
+    background: rgba(217, 119, 6, 0.18);
   }
 }

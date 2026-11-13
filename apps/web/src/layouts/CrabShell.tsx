@@ -40,7 +40,7 @@ export const CrabShell = () => {
             <div className="flex items-center gap-2 text-base font-semibold">
               <SvgIcon component={CrabSvg} size={30} />
               {!collapsed && (
-                <span className="min-w-0 truncate font-comic text-lg font-bold tracking-wide">
+                <span className="min-w-0 truncate font-comic text-lg font-bold tracking-wide text-[#4f3422]">
                   Deploy Crab
                 </span>
               )}
@@ -49,7 +49,7 @@ export const CrabShell = () => {
           items={sidebarItems}
           selectedKey={findSelectedKey(pathname)}
           onSelect={(key) => void navigate(key)}
-          footer={<span className="text-xs text-slate-400">v0.0.1</span>}
+          footer={<span className="text-xs text-[#8d8d86]">v0.0.1</span>}
           collapsed={collapsed}
         />
       }

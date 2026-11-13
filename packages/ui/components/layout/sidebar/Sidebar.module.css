@@ -2,7 +2,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--ant-color-bg-container, #fff);
+  /* 应用可通过 --sidebar-bg 自定义侧栏背景（支持渐变），否则用主题的容器底色 */
+  background: var(--sidebar-bg, var(--ant-color-bg-container, #fff));
   border-inline-end: 1px solid var(--ant-color-border-secondary, #f0f0f0);
 }
 

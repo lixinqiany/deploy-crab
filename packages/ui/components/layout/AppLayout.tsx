@@ -1,4 +1,5 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
+import { theme } from 'antd';
 import styles from './AppLayout.module.css';
 
 export interface AppLayoutProps {
@@ -27,21 +28,35 @@ export const AppLayout = ({
   resizing = false,
   animating = false,
   children,
-}: AppLayoutProps) => (
-  <div className={resizing ? `${styles.root} ${styles.resizing}` : styles.root}>
-    {sidebar != null && (
-      <aside
-        className={
-          animating ? `${styles.sider} ${styles.animating}` : styles.sider
-        }
-        style={{ width: sidebarWidth }}
-      >
-        {sidebar}
-        {resizeHandleProps && (
-          <div className={styles.handle} {...resizeHandleProps} />
-        )}
-      </aside>
-    )}
-    <main className={styles.main}>{children}</main>
-  </div>
-);
+}: AppLayoutProps) => {
+  // antd 的 CSS 变量只挂在它自己组件的 class 上，普通 div 读不到。
+  // 把布局 CSS 用到的几个变量从当前主题写到根节点，子孙元素继承即可
+  const { token } = theme.useToken();
+  const themeVars = {
+    '--ant-color-primary': token.colorPrimary,
+    '--ant-color-text': token.colorText,
+    '--ant-color-bg-container': token.colorBgContainer,
+    '--ant-color-bg-layout': token.colorBgLayout,
+    '--ant-color-border-secondary': token.colorBorderSecondary,
+  } as CSSProperties;
+  const rootCls = resizing ? `${styles.root} ${styles.resizing}` : styles.root;
+
+  return (
+    <div className={rootCls} style={themeVars}>
+      {sidebar != null && (
+        <aside
+          className={
+            animating ? `${styles.sider} ${styles.animating}` : styles.sider
+          }
+          style={{ width: sidebarWidth }}
+        >
+          {sidebar}
+          {resizeHandleProps && (
+            <div className={styles.handle} {...resizeHandleProps} />
+          )}
+        </aside>
+      )}
+      <main className={styles.main}>{children}</main>
+    </div>
+  );
+};
