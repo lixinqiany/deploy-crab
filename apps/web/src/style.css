@@ -2,6 +2,11 @@
 
 @import 'tailwindcss';
 
+@theme {
+  /* 漫画风标题字体，用于侧栏品牌名 */
+  --font-comic: 'Comic Sans MS', 'Chalkboard SE', cursive;
+}
+
 @source '../../../packages/ui';
 
 @layer base {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { DashboardOutlined } from '@ant-design/icons';
+import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
 import { DashboardView } from '../views/dashboard/DashboardView';
+import ClusterSvg from '../assets/icon/cluster.svg?react';
 
 export interface NavRoute {
   /** 路由路径，同时作为侧边栏菜单项的 key */
@@ -14,8 +15,8 @@ export interface NavRoute {
 export const navRoutes: NavRoute[] = [
   {
     path: '/dashboard',
-    label: '概览',
-    icon: <DashboardOutlined />,
+    label: '集群管理',
+    icon: <SvgIcon component={ClusterSvg} size="24px" />,
     element: <DashboardView />,
   },
 ];

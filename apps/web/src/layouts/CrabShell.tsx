@@ -7,7 +7,7 @@ import {
 import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
 import { useSidebarResize } from '@deploy-crab/ui/hooks/useSidebarResize';
 import { navRoutes } from '../routes/navigation';
-import CrabSvg from '../assets/crab.svg?react';
+import CrabSvg from '../assets/icon/crab.svg?react';
 
 const sidebarItems: SidebarItem[] = navRoutes.map(({ path, label, icon }) => ({
   key: path,
@@ -40,7 +40,9 @@ export const CrabShell = () => {
             <div className="flex items-center gap-2 text-base font-semibold">
               <SvgIcon component={CrabSvg} size={30} />
               {!collapsed && (
-                <span className="min-w-0 truncate">Deploy Crab</span>
+                <span className="min-w-0 truncate font-comic text-lg font-bold tracking-wide">
+                  Deploy Crab
+                </span>
               )}
             </div>
           }
