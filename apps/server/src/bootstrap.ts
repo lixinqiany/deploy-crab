@@ -6,12 +6,18 @@ import { AppModule } from './app.module';
 
 export async function bootstrap(options: { mode: RuntimeMode }) {
   // No runtime mode flag: unknown options (including --dev) fail before startup.
-  parseArgs({ options: {}, allowPositionals: false });
+  const { values } = parseArgs({
+    options: { 'data-dir': { type: 'string' } },
+    allowPositionals: false,
+  });
   const port = Number(process.env.PORT ?? 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT 必须是 1–65535 之间的整数。');
   }
-  const dataDirectory = await prepareDataDirectory(options.mode);
+  const dataDirectory = await prepareDataDirectory(
+    options.mode,
+    values['data-dir'],
+  );
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();

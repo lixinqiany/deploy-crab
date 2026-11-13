@@ -8,7 +8,7 @@ Web 和 Server 分别启动。开发时在两个终端执行 `pnpm dev:server` �
 
 使用构建产物时分别执行 `pnpm build:server`、`pnpm build:web`，再运行 `pnpm start:server`、`pnpm start:web`。后者仅用于本地预览；正式部署由静态文件服务器提供前端并代理 `/api`。
 
-开发入口 `dev.ts` 编译到 `.dev/`；生产入口 `src/main.ts` 编译到 `dist/main.js`，共用 `src/bootstrap.ts`。Turbo 监听后端和 core 的变化并重启，正式启动只运行构建后的 JavaScript。开发数据目录为仓库下的 `.data/`，生产数据目录为交付目录内的 `data/`。可用 `DATA_DIR` 指定独立持久化目录；相对路径基于启动工作目录解析，未指定时的默认路径与工作目录无关。
+开发入口 `dev.ts` 编译到 `.dev/`；生产入口 `src/main.ts` 编译到 `dist/main.js`，共用 `src/bootstrap.ts`。Turbo 监听后端和 core 的变化并重启，正式启动只运行构建后的 JavaScript。开发数据目录固定为仓库下的 `.deploy-crab/`，正式运行固定为 `~/.deploy-crab/`，与工作目录无关。可用启动参数 `--data-dir <路径>` 覆盖，相对路径基于启动工作目录解析。
 
 ## 断点调试
 

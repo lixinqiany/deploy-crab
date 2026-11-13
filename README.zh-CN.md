@@ -55,7 +55,7 @@ pnpm start
 ## 运行配置
 
 - `PORT`：API 端口，默认 `3000`。
-- `DATA_DIR`：数据目录。开发环境默认使用仓库根目录的 `.data/`，生产环境默认使用后端交付目录内的 `data/`。使用相对路径覆盖时，以启动工作目录为基准。
+- `--data-dir <路径>`：数据目录。开发模式固定为仓库根目录的 `.deploy-crab/`，正式运行固定为 `~/.deploy-crab/`。用启动参数覆盖时，相对路径以启动工作目录为基准，例如 `pnpm start -- --data-dir /srv/deploy-crab`。
 - `WEB_PORT`：前端端口，默认 `5173`。修改 API 端口时，前后端开发进程需设置相同的 `PORT`。
 
 更多细节见[后端说明](apps/server/README.md)和[构建文档](scripts/README.md)。

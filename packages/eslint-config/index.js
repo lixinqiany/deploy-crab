@@ -12,7 +12,7 @@ export const createConfig = (rootDirectory, ...additionalConfigs) =>
         '**/dist/**',
         '**/.dev/**',
         '**/.turbo/**',
-        '**/.data/**',
+        '**/.deploy-crab/**',
         '**/coverage/**',
         '**/*.tsbuildinfo',
       ],

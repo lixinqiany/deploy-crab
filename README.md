@@ -55,7 +55,7 @@ Only Node.js and pnpm are required on the target.
 ## Configuration
 
 - `PORT`: API port; defaults to `3000`.
-- `DATA_DIR`: data directory; defaults to `.data/` at the repository root in development and `data/` inside the server distribution in production. Relative overrides resolve from the working directory.
+- `--data-dir <path>`: data directory. Defaults to `.deploy-crab/` at the repository root in development and `~/.deploy-crab/` otherwise. Relative paths resolve from the working directory, e.g. `pnpm start -- --data-dir /srv/deploy-crab`.
 - `WEB_PORT`: frontend port; defaults to `5173`. Set the same `PORT` for both development processes when changing the API port.
 
 See the [server guide](apps/server/README.md) and [build documentation](scripts/README.md) for details (Chinese).
