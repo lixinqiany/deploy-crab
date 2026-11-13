@@ -1,0 +1,25 @@
+{
+  "name": "@deploy-crab/contracts",
+  "author": "lixinqiany <yulixinqian805@163.com>",
+  "version": "0.0.1",
+  "description": "Shared zod schemas for the deploy-crab API",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@deploy-crab/eslint-config": "workspace:*",
+    "@deploy-crab/typescript-config": "workspace:*",
+    "eslint": "10.9.1",
+    "typescript": "7.0.2"
+  }
+}

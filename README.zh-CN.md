@@ -21,13 +21,14 @@ API 地址为 <http://127.0.0.1:3000/api>。
 
 ## 目录结构
 
-| 路径                         | 用途                               |
-| ---------------------------- | ---------------------------------- |
-| `apps/server`                | NestJS API，使用 Rspack / SWC 编译 |
-| `packages/core`              | Node.js 共享代码，使用 tsdown 构建 |
-| `packages/typescript-config` | 共享严格 TypeScript 配置           |
-| `packages/eslint-config`     | 共享 ESLint 规则，兼容 Prettier    |
-| `scripts/build`              | 运行依赖分析和独立交付打包         |
+| 路径                         | 用途                                |
+| ---------------------------- | ----------------------------------- |
+| `apps/server`                | NestJS API，使用 Rspack / SWC 编译  |
+| `packages/core`              | Node.js 共享代码，使用 tsdown 构建  |
+| `packages/contracts`         | zod 接口契约，server、Web、CLI 共用 |
+| `packages/typescript-config` | 共享严格 TypeScript 配置            |
+| `packages/eslint-config`     | 共享 ESLint 规则，兼容 Prettier     |
+| `scripts/build`              | 运行依赖分析和独立交付打包          |
 
 前端位于 `apps/web`，共享 React 组件位于 `packages/ui`。`core` 使用 Node.js API，浏览器可用的共享代码应单独存放。
 

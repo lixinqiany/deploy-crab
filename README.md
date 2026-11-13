@@ -25,6 +25,7 @@ Run `pnpm dev:web` in another terminal and open <http://127.0.0.1:5173>. Vite pr
 | ---------------------------- | ---------------------------------------------------- |
 | `apps/server`                | NestJS API, compiled with Rspack / SWC               |
 | `packages/core`              | Shared Node.js code, built with tsdown               |
+| `packages/contracts`         | zod API schemas shared by server, web and CLI        |
 | `packages/typescript-config` | Shared strict TypeScript settings                    |
 | `packages/eslint-config`     | Shared ESLint rules, compatible with Prettier        |
 | `scripts/build`              | Runtime dependency analysis and standalone packaging |
