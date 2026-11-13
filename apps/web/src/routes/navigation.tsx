@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react';
-import {
-  CloudServerOutlined,
-  DashboardOutlined,
-  SettingOutlined,
-} from '@ant-design/icons';
+import { DashboardOutlined } from '@ant-design/icons';
 import { DashboardView } from '../views/dashboard/DashboardView';
-import { ProjectsView } from '../views/projects/ProjectsView';
-import { SettingsView } from '../views/settings/SettingsView';
 
 export interface NavRoute {
   /** 路由路径，同时作为侧边栏菜单项的 key */
@@ -23,17 +17,5 @@ export const navRoutes: NavRoute[] = [
     label: '概览',
     icon: <DashboardOutlined />,
     element: <DashboardView />,
-  },
-  {
-    path: '/projects',
-    label: '项目',
-    icon: <CloudServerOutlined />,
-    element: <ProjectsView />,
-  },
-  {
-    path: '/settings',
-    label: '设置',
-    icon: <SettingOutlined />,
-    element: <SettingsView />,
   },
 ];

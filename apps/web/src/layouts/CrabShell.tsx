@@ -14,7 +14,7 @@ const sidebarItems: SidebarItem[] = navRoutes.map(({ path, label, icon }) => ({
   icon,
 }));
 
-/** 当前路径属于哪个导航项，如 /projects/123 → /projects */
+/** 当前路径属于哪个导航项，如 /dashboard/123 → /dashboard */
 const findSelectedKey = (pathname: string) =>
   navRoutes.find(
     ({ path }) => pathname === path || pathname.startsWith(`${path}/`),
@@ -31,7 +31,7 @@ export const CrabShell = () => {
         <Sidebar
           header={
             <div className="flex items-center gap-2 text-base font-semibold">
-              <SvgIcon component={CrabSvg} size={28} />
+              <SvgIcon component={CrabSvg} size={30} />
               <span>Deploy Crab</span>
             </div>
           }
