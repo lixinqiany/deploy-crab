@@ -15,11 +15,51 @@
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   font-size: 18px;
   font-weight: 600;
   line-height: 1.5;
   color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+}
+
+/* 标题前的状态灯：实心圆点 + 一圈向外扩散、逐渐变淡的波纹 */
+.dot {
+  position: relative;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ant-color-primary, #1677ff);
+}
+
+.dot::after {
+  content: '';
+  position: absolute;
+  inset: 0; /* 和圆点一样大，从圆点本身开始往外扩 */
+  border-radius: 50%;
+  background: inherit;
+  animation: ripple 1.8s ease-out infinite;
+}
+
+@keyframes ripple {
+  from {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+/* 系统开了"减少动态效果"就不播波纹，只留静止的圆点 */
+@media (prefers-reduced-motion: reduce) {
+  .dot::after {
+    animation: none;
+  }
 }
 
 .extra {

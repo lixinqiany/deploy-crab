@@ -15,7 +15,10 @@ export const Page = ({ title, extra, children }: PageProps) => (
   <section className={styles.page}>
     {(title != null || extra != null) && (
       <header className={styles.header}>
-        <h1 className={styles.title}>{title}</h1>
+        <h1 className={styles.title}>
+          {title != null && <span className={styles.dot} aria-hidden />}
+          {title}
+        </h1>
         {extra != null && <div className={styles.extra}>{extra}</div>}
       </header>
     )}
