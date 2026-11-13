@@ -4,7 +4,9 @@ import {
   Sidebar,
   type SidebarItem,
 } from '@deploy-crab/ui/layout/sidebar/Sidebar';
+import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
 import { navRoutes } from '../routes/navigation';
+import CrabSvg from '../assets/crab.svg?react';
 
 const sidebarItems: SidebarItem[] = navRoutes.map(({ path, label, icon }) => ({
   key: path,
@@ -29,7 +31,7 @@ export const CrabShell = () => {
         <Sidebar
           header={
             <div className="flex items-center gap-2 text-base font-semibold">
-              <span className="text-xl">🦀</span>
+              <SvgIcon component={CrabSvg} size={28} />
               <span>Deploy Crab</span>
             </div>
           }
