@@ -24,7 +24,7 @@ API 地址为 <http://127.0.0.1:3000/api>。
 | 路径                         | 用途                                |
 | ---------------------------- | ----------------------------------- |
 | `apps/server`                | NestJS API，使用 Rspack / SWC 编译  |
-| `packages/core`              | Node.js 共享代码，使用 tsdown 构建  |
+| `packages/core`              | server 与 CLI 共用的 Node.js 源码   |
 | `packages/contracts`         | zod 接口契约，server、Web、CLI 共用 |
 | `packages/typescript-config` | 共享严格 TypeScript 配置            |
 | `packages/eslint-config`     | 共享 ESLint 规则，兼容 Prettier     |
@@ -56,7 +56,7 @@ pnpm start
 ## 运行配置
 
 - `PORT`：API 端口，默认 `3000`。
-- `--data-dir <路径>`：数据目录。开发模式固定为仓库根目录的 `.deploy-crab/`，正式运行固定为 `~/.deploy-crab/`。用启动参数覆盖时，相对路径以启动工作目录为基准，例如 `pnpm start -- --data-dir /srv/deploy-crab`。
+- `--data-dir <路径>`：数据目录。默认为 `~/.deploy-crab/`；`pnpm dev:server` 的开发脚本传入 `--data-dir ../../.deploy-crab`，开发数据因此放在仓库根目录。用启动参数覆盖时，相对路径以启动工作目录为基准，例如 `pnpm start -- --data-dir /srv/deploy-crab`。
 - `WEB_PORT`：前端端口，默认 `5173`。修改 API 端口时，前后端开发进程需设置相同的 `PORT`。
 
 更多细节见[后端说明](apps/server/README.md)和[构建文档](scripts/README.md)。

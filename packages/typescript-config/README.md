@@ -4,7 +4,7 @@
 
 `base.json` 提供通用严格检查、模块互操作和单文件编译兼容选项。Server 和 core 继承 `node.json`，使用 ES2023、Node 类型、ESNext 模块和 Bundler 模块解析，TypeScript 只检查类型。
 
-Server 保留 Nest 装饰器设置，由 Rspack / SWC 将开发和生产入口编译到 `.dev/`、`dist/`。core 通过 tsdown 构建 ESM、类型声明与源码映射。
+Server 保留 Nest 装饰器设置，由 Rspack / SWC 将开发和生产入口编译到 `.dev/`、`dist/`。core 与 contracts 以 TypeScript 源码形式共享，由使用方（Rspack、Vite、Vitest）编译。
 
 Web 和 UI 继承 `react.json`，使用浏览器 DOM 类型、React JSX 与 Bundler 模块解析，两者的源码统一由 Vite 构建。UI 以后需要独立发布产物时，再增加自己的 `tsconfig.build.json`。
 
@@ -37,7 +37,7 @@ Web 和 UI 继承 `react.json`，使用浏览器 DOM 类型、React JSX 与 Bund
 
 `skipLibCheck` 保留为 `true`，减少第三方声明文件的检查开销；它不会关闭业务源码的类型检查。Server 保留 `strictPropertyInitialization: false` 以适配 Nest 的属性注入，装饰器和元数据选项也只在 Server 开启。
 
-运行环境预设均启用 `noEmit`。Turbo 将 `check-types` 设为 `build` 的前置任务，类型错误会阻止执行构建，但不会删除上一次的 `dist`。运行转换由 tsdown、Rspack 或 Vite 完成。只有由 Node 原生运行的共享构建工具启用 `erasableSyntaxOnly`，业务源码不额外限制打包器支持的 TypeScript 语法。
+运行环境预设均启用 `noEmit`。Turbo 将 `check-types` 设为 `build` 的前置任务，类型错误会阻止执行构建，但不会删除上一次的 `dist`。运行转换由 Rspack、Vite 或 Vitest 完成。只有由 Node 原生运行的共享构建工具启用 `erasableSyntaxOnly`，业务源码不额外限制打包器支持的 TypeScript 语法。
 
 Web 的 `vite/client` 声明允许 CSS 等资源导入。`noUncheckedSideEffectImports` 只能校验模块能否被类型系统解析；已有 `*.css` 通配声明时，CSS 文件是否真实存在仍由 Vite 构建检查。[TypeScript 官方说明](https://www.typescriptlang.org/tsconfig/noUncheckedSideEffectImports.html)
 

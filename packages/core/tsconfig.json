@@ -1,9 +1,5 @@
 {
   "extends": "@deploy-crab/typescript-config/node.json",
-  "include": ["src", "tsdown.config.ts"],
-  "exclude": ["node_modules", "dist", "coverage"],
-  "compilerOptions": {
-    "declaration": true,
-    "declarationMap": true
-  }
+  "include": ["src"],
+  "exclude": ["node_modules", "coverage"]
 }

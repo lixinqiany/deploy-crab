@@ -4,23 +4,24 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "tsdown",
     "check-types": "tsc --noEmit",
-    "lint": "eslint . --max-warnings=0"
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@deploy-crab/eslint-config": "workspace:*",
     "@deploy-crab/typescript-config": "workspace:*",
     "@types/node": "^24.19.2",
     "eslint": "10.9.1",
-    "tsdown": "0.23.7",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.12"
   },
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    "types": "./dist/index.d.ts",
-    "default": "./dist/index.js"
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@deploy-crab/contracts": "workspace:*",
+    "yaml": "2.9.0"
   }
 }

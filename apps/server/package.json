@@ -9,7 +9,7 @@
   "scripts": {
     "build": "nest build && node ../../scripts/build/prepare-dist.ts main.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "dev": "nest start --path tsconfig.dev.json --entryFile dev",
+    "dev": "nest start --path tsconfig.dev.json --entryFile dev -- --data-dir ../../.deploy-crab",
     "start": "node --enable-source-maps dist/main.js",
     "lint": "eslint . ../../scripts --max-warnings=0",
     "check-types": "tsc --noEmit && tsc --noEmit -p ../../scripts/tsconfig.json",
@@ -20,6 +20,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
+    "@deploy-crab/contracts": "workspace:*",
     "@deploy-crab/core": "workspace:*",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
@@ -28,12 +29,12 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@deploy-crab/eslint-config": "workspace:*",
+    "@deploy-crab/typescript-config": "workspace:*",
     "@nestjs/cli": "^12.0.0",
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
-    "@deploy-crab/eslint-config": "workspace:*",
-    "@deploy-crab/typescript-config": "workspace:*",
     "@rspack/core": "^2.3.1",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",

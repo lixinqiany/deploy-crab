@@ -24,7 +24,7 @@ Run `pnpm dev:web` in another terminal and open <http://127.0.0.1:5173>. Vite pr
 | Path                         | Purpose                                              |
 | ---------------------------- | ---------------------------------------------------- |
 | `apps/server`                | NestJS API, compiled with Rspack / SWC               |
-| `packages/core`              | Shared Node.js code, built with tsdown               |
+| `packages/core`              | Node.js code shared by server and CLI, as TS source  |
 | `packages/contracts`         | zod API schemas shared by server, web and CLI        |
 | `packages/typescript-config` | Shared strict TypeScript settings                    |
 | `packages/eslint-config`     | Shared ESLint rules, compatible with Prettier        |
@@ -56,7 +56,7 @@ Only Node.js and pnpm are required on the target.
 ## Configuration
 
 - `PORT`: API port; defaults to `3000`.
-- `--data-dir <path>`: data directory. Defaults to `.deploy-crab/` at the repository root in development and `~/.deploy-crab/` otherwise. Relative paths resolve from the working directory, e.g. `pnpm start -- --data-dir /srv/deploy-crab`.
+- `--data-dir <path>`: data directory. Defaults to `~/.deploy-crab/`; `pnpm dev:server` passes `--data-dir ../../.deploy-crab`, so development data stays in the repository root. Relative paths resolve from the working directory, e.g. `pnpm start -- --data-dir /srv/deploy-crab`.
 - `WEB_PORT`: frontend port; defaults to `5173`. Set the same `PORT` for both development processes when changing the API port.
 
 See the [server guide](apps/server/README.md) and [build documentation](scripts/README.md) for details (Chinese).

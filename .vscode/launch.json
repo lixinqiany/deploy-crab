@@ -11,10 +11,7 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "autoAttachChildProcesses": true,
-      "outFiles": [
-        "${workspaceFolder}/apps/server/.dev/**/*.js",
-        "${workspaceFolder}/packages/core/dist/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/apps/server/.dev/**/*.js"],
       "sourceMapPathOverrides": {
         "webpack://@deploy-crab/server/*": "${workspaceFolder}/apps/server/*"
       },

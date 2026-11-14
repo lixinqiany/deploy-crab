@@ -1,11 +1,10 @@
 import { parseArgs } from 'node:util';
-import { prepareDataDirectory, type RuntimeMode } from '@deploy-crab/core';
+import { prepareDataDirectory } from '@deploy-crab/core/utils/data-directory';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
-export async function bootstrap(options: { mode: RuntimeMode }) {
-  // No runtime mode flag: unknown options (including --dev) fail before startup.
+export async function bootstrap() {
   const { values } = parseArgs({
     options: { 'data-dir': { type: 'string' } },
     allowPositionals: false,
@@ -14,10 +13,7 @@ export async function bootstrap(options: { mode: RuntimeMode }) {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT 必须是 1–65535 之间的整数。');
   }
-  const dataDirectory = await prepareDataDirectory(
-    options.mode,
-    values['data-dir'],
-  );
+  const dataDirectory = await prepareDataDirectory(values['data-dir']);
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();
