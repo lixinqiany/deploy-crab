@@ -3,6 +3,7 @@ import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ApiExceptionFilter } from './filters/api-exception/api-exception.filter';
+import { HostsModule } from './modules/inventory/hosts/hosts.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { ZodValidationPipe } from './pipes/zod/zod-validation.pipe';
 
@@ -12,6 +13,8 @@ export interface AppModuleOptions {
 }
 
 @Module({
+  // 不需要启动参数的模块直接写在这里
+  imports: [HostsModule],
   controllers: [AppController],
   providers: [
     AppService,
@@ -22,7 +25,10 @@ export interface AppModuleOptions {
   ],
 })
 export class AppModule {
-  /** 数据目录要到启动时才知道，所以用 forRoot 在运行时传入 */
+  /**
+   * 数据目录要到启动时才知道，所以需要它的模块在这里传入；
+   * 返回的 imports 会和 `@Module` 里的 imports 合并。
+   */
   static forRoot({ dataDirectory }: AppModuleOptions): DynamicModule {
     return {
       module: AppModule,
