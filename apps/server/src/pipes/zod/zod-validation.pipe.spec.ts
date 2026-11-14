@@ -1,5 +1,5 @@
+import { ValidationError } from '@deploy-crab/core/errors/domain-error';
 import type { ArgumentMetadata } from '@nestjs/common';
-import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { createZodDto } from '../../utils/zod-dto';
 import { ZodValidationPipe } from './zod-validation.pipe';
@@ -25,7 +25,7 @@ describe('ZodValidationPipe', () => {
     ).toEqual({ name: 'crab', age: 18 });
   });
 
-  it('校验失败时抛出 400，响应体符合 ApiError', () => {
+  it('校验失败时抛出 ValidationError，逐字段列出问题', () => {
     let error: unknown;
     try {
       pipe.transform({ name: '', age: 'x' }, body(PersonDto));
@@ -33,16 +33,11 @@ describe('ZodValidationPipe', () => {
       error = caught;
     }
 
-    expect(error).toBeInstanceOf(BadRequestException);
-    expect((error as BadRequestException).getResponse()).toEqual({
-      statusCode: 400,
-      code: 'validation_failed',
-      message: '请求参数不合法',
-      issues: [
-        { path: ['name'], message: '请填写名称' },
-        { path: ['age'], message: '年龄必须是数字' },
-      ],
-    });
+    expect(error).toBeInstanceOf(ValidationError);
+    expect((error as ValidationError).issues).toEqual([
+      { path: ['name'], message: '请填写名称' },
+      { path: ['age'], message: '年龄必须是数字' },
+    ]);
   });
 
   it('参数类型不是 ZodDto 时原样放行', () => {
