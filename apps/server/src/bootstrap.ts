@@ -14,7 +14,7 @@ export async function bootstrap() {
     throw new Error('PORT 必须是 1–65535 之间的整数。');
   }
   const dataDirectory = await prepareDataDirectory(values['data-dir']);
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule.forRoot({ dataDirectory }));
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();
   await app.listen(port, '127.0.0.1');
