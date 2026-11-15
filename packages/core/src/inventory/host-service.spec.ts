@@ -10,6 +10,7 @@ import {
   NotFoundError,
 } from '../errors/domain-error';
 import { FileDocumentStore } from '../storage/file-document-store';
+import { ClusterService } from './cluster-service';
 import { HostService } from './host-service';
 
 /** 新建主机的输入，只需要写和测试有关的字段 */
@@ -28,10 +29,13 @@ const input = (overrides: Partial<CreateHostInput> = {}): CreateHostInput => ({
 describe('HostService', () => {
   let root: string;
   let hosts: HostService;
+  let clusters: ClusterService;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'deploy-crab-hosts-'));
-    hosts = new HostService(new FileDocumentStore(root));
+    const store = new FileDocumentStore(root);
+    hosts = new HostService(store);
+    clusters = new ClusterService(store);
   });
   afterEach(() => rm(root, { recursive: true, force: true }));
 
@@ -164,6 +168,23 @@ describe('HostService', () => {
 
       await expect(hosts.delete(bastion.id)).rejects.toBeInstanceOf(InUseError);
       expect(await hosts.list()).toHaveLength(2);
+    });
+
+    it('仍在集群中时抛出 InUseError；从集群移除后可以删除', async () => {
+      const web = await hosts.create(input());
+      const cluster = await clusters.create({
+        name: 'prod',
+        description: '',
+        members: [{ hostId: web.id, groups: ['web'] }],
+      });
+
+      await expect(hosts.delete(web.id)).rejects.toThrow(
+        '主机 web-1 仍在集群 prod 中，请先从集群中移除',
+      );
+
+      await clusters.update(cluster.id, { members: [] });
+      await hosts.delete(web.id);
+      expect(await hosts.list()).toEqual([]);
     });
 
     it('删除不存在的主机抛出 NotFoundError', async () => {

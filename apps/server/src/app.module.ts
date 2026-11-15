@@ -3,6 +3,7 @@ import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ApiExceptionFilter } from './filters/api-exception/api-exception.filter';
+import { ClustersModule } from './modules/inventory/clusters/clusters.module';
 import { HostsModule } from './modules/inventory/hosts/hosts.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { ZodValidationPipe } from './pipes/zod/zod-validation.pipe';
@@ -14,7 +15,7 @@ export interface AppModuleOptions {
 
 @Module({
   // 不需要启动参数的模块直接写在这里
-  imports: [HostsModule],
+  imports: [HostsModule, ClustersModule],
   controllers: [AppController],
   providers: [
     AppService,

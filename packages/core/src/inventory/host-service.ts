@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { Cluster } from '@deploy-crab/contracts/cluster';
 import type {
   CreateHostInput,
   Host,
@@ -12,6 +13,7 @@ import {
 } from '../errors/domain-error';
 import type { Collection, DocumentStore } from '../storage/document-store';
 import { definedFields } from '../utils/defined-fields';
+import { ClusterCollection } from './cluster-collection';
 import { HostCollection } from './host-collection';
 
 /**
@@ -19,15 +21,18 @@ import { HostCollection } from './host-collection';
  *
  * - 名称在全部主机中唯一，不区分大小写；
  * - 跳板主机必须存在，不能是自己，也不能形成环；
- * - 仍被其他主机当作跳板时不能删除。
+ * - 仍被其他主机当作跳板，或仍在某个集群中时不能删除。
  *
  * 输入应当已经通过 contracts 中对应 schema 的校验（server 由 pipe 负责）。
  */
 export class HostService {
   readonly #hosts: Collection<Host>;
+  /** 只读，删除主机前检查它是否仍被集群引用 */
+  readonly #clusters: Collection<Cluster>;
 
   constructor(private readonly store: DocumentStore) {
     this.#hosts = store.collection(HostCollection);
+    this.#clusters = store.collection(ClusterCollection);
   }
 
   /** 全部主机，按名称排序 */
@@ -79,16 +84,34 @@ export class HostService {
   async delete(id: string): Promise<void> {
     await this.store.exclusive(async () => {
       const host = await this.get(id);
-      const hosts = await this.#hosts.list();
-      const dependents = hosts.filter((other) => other.jumpHostId === id);
-      if (dependents.length > 0) {
-        const names = dependents.map((other) => other.name).join('、');
-        throw new InUseError(
-          `主机 ${host.name} 仍是 ${names} 的跳板主机，不能删除`,
-        );
-      }
+      await this.assertNotJumpHost(host);
+      await this.assertNotInCluster(host);
       await this.#hosts.delete(id);
     });
+  }
+
+  private async assertNotJumpHost(host: Host): Promise<void> {
+    const hosts = await this.#hosts.list();
+    const dependents = hosts.filter((other) => other.jumpHostId === host.id);
+    if (dependents.length > 0) {
+      const names = dependents.map((other) => other.name).join('、');
+      throw new InUseError(
+        `主机 ${host.name} 仍是 ${names} 的跳板主机，不能删除`,
+      );
+    }
+  }
+
+  private async assertNotInCluster(host: Host): Promise<void> {
+    const clusters = await this.#clusters.list();
+    const owners = clusters.filter((cluster) =>
+      cluster.members.some((member) => member.hostId === host.id),
+    );
+    if (owners.length > 0) {
+      const names = owners.map((cluster) => cluster.name).join('、');
+      throw new InUseError(
+        `主机 ${host.name} 仍在集群 ${names} 中，请先从集群中移除`,
+      );
+    }
   }
 
   /** `hosts` 是保存前的全部主机，可能包含 `host` 的旧版本 */
