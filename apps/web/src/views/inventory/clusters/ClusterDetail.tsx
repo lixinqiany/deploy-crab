@@ -9,7 +9,7 @@ import {
 import { App, Button, Popconfirm } from 'antd';
 import { useState } from 'react';
 import { ApiRequestError } from '@/api/http';
-import { sshCommand, sshTarget } from '@/utils/ssh';
+import { sshCopyProps, sshTarget } from '@/utils/ssh';
 import { useDeleteCluster } from '@/views/inventory/useInventory';
 import { groupCounts, memberViews } from './groups';
 
@@ -144,8 +144,7 @@ export const ClusterDetail = ({
                     </span>
                   </button>
                   <CopyButton
-                    text={sshCommand(host, hostById)}
-                    label={`复制 ${host.name} 的 ssh 命令`}
+                    {...sshCopyProps(host, hostById)}
                     className="mr-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   />
                 </li>

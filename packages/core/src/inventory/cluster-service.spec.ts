@@ -17,7 +17,9 @@ const MISSING_ID = '00000000-0000-4000-8000-000000000000';
 
 const hostInput = (name: string): CreateHostInput => ({
   name,
-  address: '10.0.0.1',
+  publicAddress: '1.2.3.4',
+  privateAddress: '10.0.0.1',
+  connectVia: 'public',
   port: 22,
   user: 'root',
   auth: { method: 'agent' },

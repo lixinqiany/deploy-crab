@@ -15,14 +15,18 @@ import {
 } from 'antd';
 import { useMemo, useState } from 'react';
 import { ApiRequestError } from '@/api/http';
-import { sshCommand, sshTarget } from '@/utils/ssh';
+import { sshCopyProps, sshTarget } from '@/utils/ssh';
 import { useDeleteHost } from '@/views/inventory/useInventory';
 
 /** 名称、地址、用户、标签任一包含关键字即匹配，不区分大小写 */
 const matches = (host: Host, keyword: string) =>
-  [host.name, host.address, host.user, ...host.labels].some((value) =>
-    value.toLowerCase().includes(keyword),
-  );
+  [
+    host.name,
+    host.publicAddress ?? '',
+    host.privateAddress ?? '',
+    host.user,
+    ...host.labels,
+  ].some((value) => value.toLowerCase().includes(keyword));
 
 interface HostTableProps {
   hosts: Host[];
@@ -74,6 +78,33 @@ export const HostTable = ({
       ),
     },
     {
+      title: '地址',
+      key: 'addresses',
+      render: (_, host) => (
+        <dl className="m-0 grid w-fit grid-cols-[auto_auto] gap-x-2 gap-y-0.5 text-[13px]">
+          {(['public', 'private'] as const).map((network) => {
+            const address =
+              network === 'public' ? host.publicAddress : host.privateAddress;
+            if (address === null) return null;
+            const active = host.connectVia === network;
+            return (
+              <div key={network} className="contents">
+                <dt
+                  className={`text-xs leading-5 ${active ? 'font-medium text-amber-text' : 'text-sand-9'}`}
+                  title={active ? 'SSH 用这个地址连接' : undefined}
+                >
+                  {network === 'public' ? '外网' : '内网'}
+                </dt>
+                <dd className="m-0 font-mono leading-5 text-sand-12">
+                  {address}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      ),
+    },
+    {
       title: 'SSH',
       key: 'ssh',
       render: (_, host) => {
@@ -91,8 +122,7 @@ export const HostTable = ({
               </div>
             </div>
             <CopyButton
-              text={sshCommand(host, hostById)}
-              label={`复制 ${host.name} 的 ssh 命令`}
+              {...sshCopyProps(host, hostById)}
               className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
             />
           </div>

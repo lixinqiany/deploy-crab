@@ -34,7 +34,7 @@ describe('Clusters (e2e)', () => {
   const createHost = async (name: string): Promise<Host> => {
     const response = await http()
       .post('/hosts')
-      .send({ name, address: '10.0.0.1', user: 'root' })
+      .send({ name, publicAddress: '10.0.0.1', user: 'root' })
       .expect(201);
     return response.body as Host;
   };

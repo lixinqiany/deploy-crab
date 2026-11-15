@@ -8,6 +8,7 @@ import {
   InUseError,
   InvalidReferenceError,
   NotFoundError,
+  ValidationError,
 } from '../errors/domain-error';
 import { FileDocumentStore } from '../storage/file-document-store';
 import { ClusterService } from './cluster-service';
@@ -16,7 +17,9 @@ import { HostService } from './host-service';
 /** 新建主机的输入，只需要写和测试有关的字段 */
 const input = (overrides: Partial<CreateHostInput> = {}): CreateHostInput => ({
   name: 'web-1',
-  address: '10.0.0.1',
+  publicAddress: '1.2.3.4',
+  privateAddress: '10.0.0.1',
+  connectVia: 'public',
   port: 22,
   user: 'root',
   auth: { method: 'agent' },
@@ -43,7 +46,11 @@ describe('HostService', () => {
     it('生成 id 和时间戳，可以读回', async () => {
       const host = await hosts.create(input());
 
-      expect(host).toMatchObject({ name: 'web-1', address: '10.0.0.1' });
+      expect(host).toMatchObject({
+        name: 'web-1',
+        publicAddress: '1.2.3.4',
+        connectVia: 'public',
+      });
       expect(host.id).toMatch(/^[0-9a-f-]{36}$/);
       expect(host.createdAt).toBe(host.updatedAt);
       expect(await hosts.get(host.id)).toEqual(host);
@@ -114,6 +121,31 @@ describe('HostService', () => {
       await expect(
         hosts.update('00000000-0000-4000-8000-000000000000', { port: 1 }),
       ).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
+
+  describe('地址', () => {
+    it('合并后选中的地址为空时抛出 ValidationError，并指出字段', async () => {
+      const host = await hosts.create(input({ privateAddress: null }));
+
+      const error: unknown = await hosts
+        .update(host.id, { connectVia: 'private' })
+        .catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).issues).toEqual([
+        {
+          path: ['privateAddress'],
+          message: '已选择经内网连接，请填写内网地址',
+        },
+      ]);
+    });
+
+    it('两个地址都清空时抛出 ValidationError', async () => {
+      const host = await hosts.create(input());
+      await expect(
+        hosts.update(host.id, { publicAddress: null, privateAddress: null }),
+      ).rejects.toBeInstanceOf(ValidationError);
     });
   });
 

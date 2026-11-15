@@ -238,7 +238,12 @@ export const ClusterDrawer = ({
                   options={candidates.map((host) => ({
                     value: host.id,
                     label: host.name,
-                    search: `${host.name} ${host.address} ${host.labels.join(' ')}`,
+                    search: [
+                      host.name,
+                      host.publicAddress,
+                      host.privateAddress,
+                      ...host.labels,
+                    ].join(' '),
                     target: sshTarget(host),
                   }))}
                   optionRender={(option) => (

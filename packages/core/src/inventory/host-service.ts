@@ -1,15 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { Cluster } from '@deploy-crab/contracts/cluster';
-import type {
-  CreateHostInput,
-  Host,
-  UpdateHostInput,
+import {
+  type CreateHostInput,
+  type Host,
+  hostAddressIssues,
+  type UpdateHostInput,
 } from '@deploy-crab/contracts/host';
 import {
   ConflictError,
   InUseError,
   InvalidReferenceError,
   NotFoundError,
+  ValidationError,
 } from '../errors/domain-error';
 import type { Collection, DocumentStore } from '../storage/document-store';
 import { definedFields } from '../utils/defined-fields';
@@ -20,6 +22,7 @@ import { HostCollection } from './host-collection';
  * 主机的业务规则，server 和以后的 CLI 共用，不依赖 Nest 或 HTTP。
  *
  * - 名称在全部主机中唯一，不区分大小写；
+ * - 外网、内网地址至少有一个，且 `connectVia` 选中的那个已填写；
  * - 跳板主机必须存在，不能是自己，也不能形成环；
  * - 仍被其他主机当作跳板，或仍在某个集群中时不能删除。
  *
@@ -116,6 +119,10 @@ export class HostService {
 
   /** `hosts` 是保存前的全部主机，可能包含 `host` 的旧版本 */
   private assertValid(host: Host, hosts: Host[]): void {
+    // 修改时只传部分字段，地址的组合规则要在合并后检查
+    const issues = hostAddressIssues(host);
+    if (issues.length > 0) throw new ValidationError('请求参数不合法', issues);
+
     const others = hosts.filter((other) => other.id !== host.id);
     this.assertUniqueName(host, others);
     this.assertValidJumpHost(host, others);

@@ -39,11 +39,14 @@ describe('Hosts (e2e)', () => {
     // 新建：只传必填字段，其余使用默认值
     const host = await createHost({
       name: ' web-1 ',
-      address: '10.0.0.1',
+      publicAddress: '10.0.0.1',
       user: 'root',
     });
     expect(host).toMatchObject({
       name: 'web-1',
+      publicAddress: '10.0.0.1',
+      privateAddress: null,
+      connectVia: 'public',
       port: 22,
       auth: { method: 'agent' },
       jumpHostId: null,
@@ -58,6 +61,15 @@ describe('Hosts (e2e)', () => {
         expect(response.body).toEqual([host]);
       });
     await http().get(`/hosts/${host.id}`).expect(200, host);
+
+    // 私钥路径开头的全角「～」换成半角 `~`
+    const keyed = await http()
+      .patch(`/hosts/${host.id}`)
+      .send({ auth: { method: 'key', keyPath: '～/.ssh/id_ed25519' } })
+      .expect(200);
+    expect(keyed.body).toMatchObject({
+      auth: { method: 'key', keyPath: '~/.ssh/id_ed25519' },
+    });
 
     // 修改：只改传入的字段
     const updated = await http()
@@ -74,7 +86,7 @@ describe('Hosts (e2e)', () => {
   it('请求体不合法 → 400，逐字段列出问题', async () => {
     const response = await http()
       .post('/hosts')
-      .send({ name: '', address: '10.0.0.1', user: 'root', port: 70000 })
+      .send({ name: '', publicAddress: '10.0.0.1', user: 'root', port: 70000 })
       .expect(400);
 
     expect(response.body).toMatchObject({
@@ -82,6 +94,51 @@ describe('Hosts (e2e)', () => {
       issues: [
         { path: ['name'], message: '名称不能为空' },
         { path: ['port'], message: '端口范围 1–65535' },
+      ],
+    });
+  });
+
+  it('连接方式：经跳板默认走内网，选中的地址必须填写', async () => {
+    const bastion = await createHost({
+      name: 'bastion',
+      publicAddress: '1.2.3.4',
+      privateAddress: '10.0.0.1',
+      user: 'ops',
+    });
+    expect(bastion.connectVia).toBe('public');
+
+    const web = await createHost({
+      name: 'web',
+      publicAddress: '5.6.7.8',
+      privateAddress: '10.0.1.11',
+      user: 'deploy',
+      jumpHostId: bastion.id,
+    });
+    expect(web.connectVia).toBe('private');
+
+    const missing = await http()
+      .post('/hosts')
+      .send({ name: 'db', user: 'root' })
+      .expect(400);
+    expect(missing.body).toMatchObject({
+      code: 'validation_failed',
+      issues: [
+        { path: ['publicAddress'], message: '外网地址和内网地址至少填写一个' },
+      ],
+    });
+
+    // 修改后选中的地址为空，同样逐字段返回
+    const cleared = await http()
+      .patch(`/hosts/${web.id}`)
+      .send({ privateAddress: null })
+      .expect(400);
+    expect(cleared.body).toMatchObject({
+      code: 'validation_failed',
+      issues: [
+        {
+          path: ['privateAddress'],
+          message: '已选择经内网连接，请填写内网地址',
+        },
       ],
     });
   });
@@ -94,19 +151,19 @@ describe('Hosts (e2e)', () => {
   it('业务规则错误按错误码返回', async () => {
     const bastion = await createHost({
       name: 'bastion',
-      address: '10.0.0.1',
+      publicAddress: '10.0.0.1',
       user: 'root',
     });
     await createHost({
       name: 'web',
-      address: '10.0.0.2',
+      publicAddress: '10.0.0.2',
       user: 'root',
       jumpHostId: bastion.id,
     });
 
     await http()
       .post('/hosts')
-      .send({ name: 'BASTION', address: '10.0.0.3', user: 'root' })
+      .send({ name: 'BASTION', publicAddress: '10.0.0.3', user: 'root' })
       .expect(409)
       .expect((response) => {
         expect(response.body).toMatchObject({ code: 'conflict' });

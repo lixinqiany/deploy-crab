@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { HostNetwork } from './enums/host';
+import type { ApiErrorIssue } from './error';
 import { auditFields, Description, DisplayName, ResourceId } from './fields';
 
 /**
@@ -19,7 +21,9 @@ export const HostAuth = z
           .string({ error: '请填写私钥路径' })
           .trim()
           .min(1, '请填写私钥路径')
-          .max(1024),
+          .max(1024)
+          // 中文输入法下容易打出全角的「～」，ssh 不认，换成半角 `~`
+          .transform((path) => path.replace(/^～(?=\/|$)/, '~')),
       })
       .meta({ id: 'KeyAuth' }),
   ])
@@ -33,6 +37,76 @@ export const HostAddress = z
   .min(1, '请填写地址')
   .max(253, '地址过长')
   .regex(/^[^\s/@]+$/, '地址不能包含空格、斜杠或 @');
+
+/** 可选的地址，`null` 表示未填写 */
+const OptionalAddress = HostAddress.nullable();
+
+/** 每种网络对应的地址字段 */
+export const ADDRESS_FIELD = {
+  public: 'publicAddress',
+  private: 'privateAddress',
+} as const satisfies Record<HostNetwork, string>;
+
+/** 与地址有关的三个字段 */
+export interface HostAddresses {
+  publicAddress: string | null;
+  privateAddress: string | null;
+  connectVia: HostNetwork;
+}
+
+/**
+ * SSH 连接这台主机用的地址，即 `connectVia` 选中的那个。
+ * 这个地址是从「上一跳」去连的：直连时是运行节点，经跳板时是跳板主机。
+ */
+export const connectAddress = (host: HostAddresses): string | null =>
+  host[ADDRESS_FIELD[host.connectVia]];
+
+/**
+ * 地址的组合规则：至少填一个，且 `connectVia` 选中的那个必须填写。
+ * 新建时由 schema 检查；修改时只传部分字段，由 core 合并后再检查。
+ */
+export const hostAddressIssues = (host: HostAddresses): ApiErrorIssue[] => {
+  if (host.publicAddress === null && host.privateAddress === null) {
+    return [
+      {
+        path: [ADDRESS_FIELD.public],
+        message: '外网地址和内网地址至少填写一个',
+      },
+    ];
+  }
+  if (connectAddress(host) === null) {
+    const network = host.connectVia === 'public' ? '外网' : '内网';
+    return [
+      {
+        path: [ADDRESS_FIELD[host.connectVia]],
+        message: `已选择经${network}连接，请填写${network}地址`,
+      },
+    ];
+  }
+  return [];
+};
+
+const checkAddresses = (host: HostAddresses, ctx: z.RefinementCtx) => {
+  for (const issue of hostAddressIssues(host)) {
+    ctx.addIssue({ code: 'custom', path: issue.path, message: issue.message });
+  }
+};
+
+/**
+ * 没有指定 `connectVia` 时的默认值：只填了一个地址就用它；
+ * 两个都填了，经跳板时用内网，直连时用外网。
+ */
+export const defaultConnectVia = (
+  host: Pick<HostAddresses, 'publicAddress' | 'privateAddress'> & {
+    jumpHostId: string | null;
+  },
+): HostNetwork => {
+  if (host.publicAddress === null && host.privateAddress !== null)
+    return 'private';
+  if (host.privateAddress === null && host.publicAddress !== null)
+    return 'public';
+  return host.jumpHostId === null ? 'public' : 'private';
+};
 
 export const SshPort = z
   .number({ error: '端口必须是数字' })
@@ -68,7 +142,12 @@ const JumpHostId = ResourceId.nullable();
 /** 主机的可编辑字段，新建、修改和完整记录共用 */
 const hostFields = {
   name: DisplayName,
-  address: HostAddress,
+  /** 外网地址：公网 IP 或域名 */
+  publicAddress: OptionalAddress,
+  /** 内网地址：所在 VPC 或局域网内的 IP，部署时集群内互相访问也用它 */
+  privateAddress: OptionalAddress,
+  /** SSH 用哪个地址连接 */
+  connectVia: HostNetwork,
   port: SshPort,
   user: SshUser,
   auth: HostAuth,
@@ -80,25 +159,40 @@ const hostFields = {
 /** 已保存的主机 */
 export const Host = z
   .object({ id: ResourceId, ...hostFields, ...auditFields })
+  .superRefine(checkAddresses)
   .meta({ id: 'Host' });
 export type Host = z.infer<typeof Host>;
 
-/** 新建主机：只有名称、地址和用户必填，其余字段使用默认值 */
+/**
+ * 新建主机：名称、用户和至少一个地址必填，其余字段使用默认值。
+ * 不传 `connectVia` 时按 `defaultConnectVia` 选择。
+ */
 export const CreateHostInput = z
   .object({
     ...hostFields,
+    publicAddress: OptionalAddress.default(null),
+    privateAddress: OptionalAddress.default(null),
+    connectVia: HostNetwork.optional(),
     port: SshPort.default(22),
     auth: HostAuth.default({ method: 'agent' }),
     jumpHostId: JumpHostId.default(null),
     labels: HostLabels.default([]),
     description: Description.default(''),
   })
+  .transform(({ connectVia, ...host }) => ({
+    ...host,
+    connectVia: connectVia ?? defaultConnectVia(host),
+  }))
+  .superRefine(checkAddresses)
   .meta({ id: 'CreateHostInput' });
 export type CreateHostInput = z.output<typeof CreateHostInput>;
 /** 新建主机的请求体：带默认值的字段可以省略 */
 export type CreateHostBody = z.input<typeof CreateHostInput>;
 
-/** 修改主机：只修改传入的字段；`jumpHostId: null` 表示改回直连 */
+/**
+ * 修改主机：只修改传入的字段；`jumpHostId: null` 表示改回直连。
+ * 地址的组合规则要看合并后的结果，由 core 检查。
+ */
 export const UpdateHostInput = z
   .object(hostFields)
   .partial()
