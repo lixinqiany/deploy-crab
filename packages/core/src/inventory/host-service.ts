@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import {
-  type CreateHostInput,
+import type {
+  CreateHostInput,
   Host,
-  type UpdateHostInput,
+  UpdateHostInput,
 } from '@deploy-crab/contracts/host';
 import {
   ConflictError,
@@ -12,6 +12,7 @@ import {
 } from '../errors/domain-error';
 import type { Collection, DocumentStore } from '../storage/document-store';
 import { definedFields } from '../utils/defined-fields';
+import { HostCollection } from './host-collection';
 
 /**
  * 主机的业务规则，server 和以后的 CLI 共用，不依赖 Nest 或 HTTP。
@@ -26,7 +27,7 @@ export class HostService {
   readonly #hosts: Collection<Host>;
 
   constructor(private readonly store: DocumentStore) {
-    this.#hosts = store.collection('hosts', Host);
+    this.#hosts = store.collection(HostCollection);
   }
 
   /** 全部主机，按名称排序 */

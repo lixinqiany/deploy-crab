@@ -10,12 +10,11 @@ import {
   type Mock,
   vi,
 } from 'vitest';
-import type { DocumentSchema } from './document-store';
+import { defineCollection, type DocumentSchema } from './document-store';
 import {
   FileDocumentStore,
   type InvalidDocumentHandler,
 } from './file-document-store';
-import { YamlFormat } from './yaml-format';
 
 interface Note {
   id: string;
@@ -33,7 +32,19 @@ const NoteSchema: DocumentSchema<Note> = {
   },
 };
 
-describe('FileDocumentStore（YAML 格式）', () => {
+const NoteCollection = defineCollection({
+  name: 'notes',
+  schema: NoteSchema,
+  format: 'yaml',
+});
+
+const LogCollection = defineCollection({
+  name: 'logs',
+  schema: NoteSchema,
+  format: 'json',
+});
+
+describe('FileDocumentStore', () => {
   let root: string;
   let onInvalidDocument: Mock<InvalidDocumentHandler>;
   let store: FileDocumentStore;
@@ -41,13 +52,12 @@ describe('FileDocumentStore（YAML 格式）', () => {
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'deploy-crab-core-'));
     onInvalidDocument = vi.fn<InvalidDocumentHandler>();
-    store = new FileDocumentStore(root, new YamlFormat(), {
-      onInvalidDocument,
-    });
+    store = new FileDocumentStore(root, { onInvalidDocument });
   });
   afterEach(() => rm(root, { recursive: true, force: true }));
 
-  const notes = () => store.collection('notes', NoteSchema);
+  const notes = () => store.collection(NoteCollection);
+  const logs = () => store.collection(LogCollection);
 
   it('集合目录不存在时视为空集合', async () => {
     expect(await notes().list()).toEqual([]);
@@ -62,6 +72,41 @@ describe('FileDocumentStore（YAML 格式）', () => {
     );
     expect(await notes().get('n1')).toEqual({ id: 'n1', title: '你好' });
     expect(await notes().list()).toEqual([{ id: 'n1', title: '你好' }]);
+  });
+
+  it('json 集合写成带缩进的 JSON 文件，与 yaml 集合共存', async () => {
+    await notes().put({ id: 'n1', title: 'yaml' });
+    await logs().put({ id: 'l1', title: 'json' });
+
+    expect(await readFile(join(root, 'logs', 'l1.json'), 'utf8')).toBe(
+      '{\n  "id": "l1",\n  "title": "json"\n}\n',
+    );
+    expect(await readdir(join(root, 'notes'))).toEqual(['n1.yaml']);
+    expect(await logs().get('l1')).toEqual({ id: 'l1', title: 'json' });
+    expect(await logs().list()).toEqual([{ id: 'l1', title: 'json' }]);
+  });
+
+  it('同一个集合名不能以不同格式使用', () => {
+    notes();
+    expect(() => notes()).not.toThrow();
+    expect(() =>
+      store.collection({ ...NoteCollection, format: 'json' }),
+    ).toThrow('already used with format yaml');
+  });
+
+  it('其他格式的文件不读取，并上报（集合改过格式后的旧数据）', async () => {
+    await notes().put({ id: 'n1', title: 'ok' });
+    await writeFile(
+      join(root, 'notes', 'old.json'),
+      '{"id":"old","title":"x"}',
+    );
+    await writeFile(join(root, 'notes', 'README.txt'), 'ignored');
+
+    expect(await notes().list()).toEqual([{ id: 'n1', title: 'ok' }]);
+    expect(onInvalidDocument).toHaveBeenCalledTimes(1);
+    expect(onInvalidDocument.mock.calls[0]?.[0]).toBe(
+      join(root, 'notes', 'old.json'),
+    );
   });
 
   it('put 整体替换，delete 返回是否真的删除', async () => {
@@ -94,9 +139,9 @@ describe('FileDocumentStore（YAML 格式）', () => {
   });
 
   it('拒绝可能造成路径穿越的集合名和 id', async () => {
-    expect(() => store.collection('../etc', NoteSchema)).toThrow(
-      'Invalid collection name',
-    );
+    expect(() =>
+      store.collection({ ...NoteCollection, name: '../etc' }),
+    ).toThrow('Invalid collection name');
     await expect(notes().get('../secret')).rejects.toThrow(
       'Invalid document id',
     );

@@ -10,7 +10,6 @@ import {
   NotFoundError,
 } from '../errors/domain-error';
 import { FileDocumentStore } from '../storage/file-document-store';
-import { YamlFormat } from '../storage/yaml-format';
 import { HostService } from './host-service';
 
 /** 新建主机的输入，只需要写和测试有关的字段 */
@@ -32,7 +31,7 @@ describe('HostService', () => {
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'deploy-crab-hosts-'));
-    hosts = new HostService(new FileDocumentStore(root, new YamlFormat()));
+    hosts = new HostService(new FileDocumentStore(root));
   });
   afterEach(() => rm(root, { recursive: true, force: true }));
 

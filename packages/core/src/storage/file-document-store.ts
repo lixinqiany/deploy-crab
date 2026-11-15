@@ -5,10 +5,24 @@ import { Mutex } from '../utils/mutex';
 import type { DocumentFormat } from './document-format';
 import {
   Collection,
+  type CollectionDefinition,
   type Document,
   type DocumentSchema,
   DocumentStore,
+  type FormatName,
 } from './document-store';
+import { JsonFormat } from './json-format';
+import { YamlFormat } from './yaml-format';
+
+/** 每种格式名对应的实现；`satisfies` 保证 `FormatName` 新增成员时这里不会漏 */
+const FORMATS = {
+  yaml: new YamlFormat(),
+  json: new JsonFormat(),
+} satisfies Record<FormatName, DocumentFormat>;
+
+const KNOWN_EXTENSIONS: readonly string[] = Object.values(FORMATS).map(
+  (format) => format.extension,
+);
 
 /** 集合名和文档 id 会直接拼进文件路径，只允许安全字符，防止 `../` 之类的路径穿越 */
 const SAFE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -54,7 +68,7 @@ class FileCollection<T extends Document> extends Collection<T> {
     }
     const documents = await Promise.all(
       entries
-        .filter((entry) => entry.endsWith(this.format.extension))
+        .filter((entry) => this.accepts(entry))
         .map((entry) => this.read(join(this.directory, entry))),
     );
     return documents.filter((document) => document !== undefined);
@@ -81,6 +95,26 @@ class FileCollection<T extends Document> extends Collection<T> {
     }
   }
 
+  /**
+   * 只读取本集合格式的文件。其他已知格式的文件多半是集合改过格式后留下的旧数据，
+   * 跳过并上报，避免数据看起来「凭空消失」；迁移交给人处理。
+   */
+  private accepts(entry: string): boolean {
+    if (entry.endsWith(this.format.extension)) return true;
+    const foreign = KNOWN_EXTENSIONS.find((extension) =>
+      entry.endsWith(extension),
+    );
+    if (foreign) {
+      this.onInvalid(
+        join(this.directory, entry),
+        new Error(
+          `File format ${foreign} does not match collection format ${this.format.extension}`,
+        ),
+      );
+    }
+    return false;
+  }
+
   private fileOf(id: string): string {
     assertSafeSegment('document id', id);
     return join(this.directory, `${id}${this.format.extension}`);
@@ -104,12 +138,12 @@ class FileCollection<T extends Document> extends Collection<T> {
 }
 
 /**
- * 基于文件的文档存储，文件格式由传入的 `DocumentFormat` 决定：
+ * 基于文件的文档存储，每个集合的文件格式由它的定义决定：
  *
  * ```text
  * <root>/
  * ├── hosts/<id>.yaml
- * └── clusters/<id>.yaml
+ * └── sessions/<id>.json
  * ```
  *
  * 文件可以直接阅读和手工编辑，写入是原子的。
@@ -118,10 +152,11 @@ class FileCollection<T extends Document> extends Collection<T> {
 export class FileDocumentStore extends DocumentStore {
   readonly #mutex = new Mutex();
   readonly #onInvalid: InvalidDocumentHandler;
+  /** 已经取用过的集合及其格式，用来发现同名集合声明了不同格式 */
+  readonly #formats = new Map<string, FormatName>();
 
   constructor(
     private readonly root: string,
-    private readonly format: DocumentFormat,
     options: FileDocumentStoreOptions = {},
   ) {
     super();
@@ -131,15 +166,23 @@ export class FileDocumentStore extends DocumentStore {
         console.warn(`Skipped invalid document ${file}:`, error));
   }
 
-  collection<T extends Document>(
-    name: string,
-    schema: DocumentSchema<T>,
-  ): Collection<T> {
+  collection<T extends Document>({
+    name,
+    schema,
+    format,
+  }: CollectionDefinition<T>): Collection<T> {
     assertSafeSegment('collection name', name);
+    const registered = this.#formats.get(name);
+    if (registered !== undefined && registered !== format) {
+      throw new Error(
+        `Collection ${JSON.stringify(name)} is already used with format ${registered}, cannot use ${format}`,
+      );
+    }
+    this.#formats.set(name, format);
     return new FileCollection(
       join(this.root, name),
       schema,
-      this.format,
+      FORMATS[format],
       this.#onInvalid,
     );
   }

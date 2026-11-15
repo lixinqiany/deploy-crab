@@ -1,7 +1,6 @@
 import { join } from 'node:path';
 import { DocumentStore } from '@deploy-crab/core/storage/document-store';
 import { FileDocumentStore } from '@deploy-crab/core/storage/file-document-store';
-import { YamlFormat } from '@deploy-crab/core/storage/yaml-format';
 import { type DynamicModule, Logger, Module } from '@nestjs/common';
 
 export interface StorageModuleOptions {
@@ -11,7 +10,7 @@ export interface StorageModuleOptions {
 
 /**
  * 提供 `DocumentStore`。业务模块在构造函数里声明 `store: DocumentStore` 即可使用，
- * 不需要知道底层是 YAML 文件还是别的实现。
+ * 不需要知道底层是文件还是别的实现。
  *
  * 声明为全局模块，只需在 AppModule 里 `forRoot` 一次。
  */
@@ -34,13 +33,10 @@ export class StorageModule {
 
   private static createStore(dataDirectory: string): DocumentStore {
     const logger = new Logger(DocumentStore.name);
-    return new FileDocumentStore(
-      join(dataDirectory, 'store'),
-      new YamlFormat(),
-      {
-        onInvalidDocument: (file, error) =>
-          logger.warn(`Skipped invalid document ${file}: ${String(error)}`),
-      },
-    );
+    // 每个集合的格式由它自己的定义决定，这里不需要指定
+    return new FileDocumentStore(join(dataDirectory, 'store'), {
+      onInvalidDocument: (file, error) =>
+        logger.warn(`Skipped invalid document ${file}: ${String(error)}`),
+    });
   }
 }
