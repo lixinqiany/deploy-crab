@@ -11,6 +11,7 @@ export const sand = {
   2: '#f9f9f8',
   3: '#f1f0ef',
   4: '#e9e8e6',
+  5: '#e2e1de',
   6: '#dad9d6',
   9: '#8d8d86',
   11: '#63635e',
@@ -38,8 +39,34 @@ export const amberTheme: ThemeConfig = {
     colorBorder: sand[6],
     colorBorderSecondary: sand[4],
     borderRadius: 8,
+    controlHeight: 34,
+    fontSize: 14,
   },
   components: {
+    Button: {
+      fontWeight: 500,
+      primaryShadow: 'none',
+      defaultShadow: 'none',
+    },
+    Segmented: {
+      itemSelectedBg: '#ffffff',
+      trackBg: sand[4],
+      itemColor: sand[11],
+      itemHoverColor: sand[12],
+    },
+    Drawer: {
+      footerPaddingBlock: 12,
+      footerPaddingInline: 24,
+    },
+    Form: {
+      labelColor: sand[11],
+      verticalLabelPadding: '0 0 6px',
+      itemMarginBottom: 20,
+    },
+    Tag: {
+      defaultBg: sand[3],
+      defaultColor: sand[11],
+    },
     Menu: {
       itemBg: 'transparent',
       itemColor: sand[11],

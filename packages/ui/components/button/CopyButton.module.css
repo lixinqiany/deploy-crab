@@ -1,0 +1,38 @@
+/*
+ * 放在 components 层：使用方通过 className 传入的 Tailwind 工具类（utilities 层）可以覆盖这里，
+ * 例如深色背景上改文字颜色、悬停整行时才显示按钮。
+ */
+@layer components {
+  .button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      opacity 0.15s;
+  }
+
+  .button:hover {
+    background: var(--ant-color-fill-secondary, rgba(0, 0, 0, 0.06));
+    color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+  }
+
+  .button:focus-visible {
+    outline: 2px solid var(--ant-color-primary, #1677ff);
+    outline-offset: 1px;
+  }
+
+  .check {
+    color: var(--ant-color-primary, #1677ff);
+  }
+}

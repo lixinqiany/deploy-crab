@@ -69,6 +69,8 @@ export const CreateClusterInput = z
   })
   .meta({ id: 'CreateClusterInput' });
 export type CreateClusterInput = z.output<typeof CreateClusterInput>;
+/** 新建集群的请求体：带默认值的字段可以省略 */
+export type CreateClusterBody = z.input<typeof CreateClusterInput>;
 
 /** 修改集群：只修改传入的字段；`members` 传入时整体替换成员列表 */
 export const UpdateClusterInput = z
@@ -76,3 +78,5 @@ export const UpdateClusterInput = z
   .partial()
   .meta({ id: 'UpdateClusterInput' });
 export type UpdateClusterInput = z.output<typeof UpdateClusterInput>;
+/** 修改集群的请求体 */
+export type UpdateClusterBody = z.input<typeof UpdateClusterInput>;

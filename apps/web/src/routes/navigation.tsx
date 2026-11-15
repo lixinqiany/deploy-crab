@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
-import { DashboardView } from '../views/dashboard/DashboardView';
-import ClusterSvg from '../assets/icon/cluster.svg?react';
+import { InventoryView } from '../views/inventory/InventoryView';
+import HostSvg from '../assets/icon/host.svg?react';
 
 export interface NavRoute {
   /** 路由路径，同时作为侧边栏菜单项的 key */
@@ -14,9 +14,9 @@ export interface NavRoute {
 /** 侧边栏菜单和子路由都从这份配置生成 */
 export const navRoutes: NavRoute[] = [
   {
-    path: '/dashboard',
+    path: '/clusters',
     label: '集群管理',
-    icon: <SvgIcon component={ClusterSvg} size="24px" />,
-    element: <DashboardView />,
+    icon: <SvgIcon component={HostSvg} size="24px" />,
+    element: <InventoryView />,
   },
 ];

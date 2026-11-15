@@ -2,9 +2,34 @@
 
 @import 'tailwindcss';
 
+/*
+ * 颜色与 theme.ts 中的 sand / amber 保持一致，注册成 Tailwind 色名，
+ * 组件里写 text-sand-11、bg-amber-soft，而不是到处写十六进制。
+ */
 @theme {
   /* 漫画风标题字体，用于侧栏品牌名 */
   --font-comic: 'Comic Sans MS', 'Chalkboard SE', cursive;
+  /* 命令、地址等需要逐字核对的内容 */
+  --font-mono:
+    'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  --color-sand-1: #fdfdfc;
+  --color-sand-2: #f9f9f8;
+  --color-sand-3: #f1f0ef;
+  --color-sand-4: #e9e8e6;
+  --color-sand-5: #e2e1de;
+  --color-sand-6: #dad9d6;
+  --color-sand-7: #cfceca;
+  --color-sand-9: #8d8d86;
+  --color-sand-11: #63635e;
+  --color-sand-12: #21201c;
+
+  --color-amber: #d97706;
+  --color-amber-text: #ab6400;
+  --color-amber-deep: #4f3422;
+  /* 选中、悬停时的淡琥珀底 */
+  --color-amber-soft: rgba(217, 119, 6, 0.08);
+  --color-amber-line: rgba(217, 119, 6, 0.35);
 }
 
 @source '../../../packages/ui';
@@ -12,15 +37,57 @@
 @layer base {
   body {
     min-width: 320px;
-    background: #f9f9f8; /* 与 amberTheme.colorBgLayout（sand2）一致，避免回弹滚动时露白 */
+    /* 与 amberTheme.colorBgLayout 一致，避免回弹滚动时露白 */
+    background: var(--color-sand-2);
   }
 
   :root {
     /* 侧栏比主区域深半档（sand3），靠明度区分区域，而不是靠颜色 */
-    --sidebar-bg: #f1f0ef;
+    --sidebar-bg: var(--color-sand-3);
   }
 
   ::selection {
     background: rgba(217, 119, 6, 0.18);
+  }
+
+  /* 数字等宽，列表里的数量、端口上下对齐 */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* 列表行进入时的轻微淡入，只在打开详情、切换选项卡时出现一次 */
+  @keyframes crab-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .crab-fade-in {
+    animation: crab-fade-in 180ms ease-out both;
+  }
+
+  /* 「添加主机」下拉框做成虚线入口，读起来像一个操作，而不是被禁用的输入框 */
+  .crab-add-select.ant-select {
+    border-style: dashed;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .crab-add-select.ant-select:hover {
+    border-color: var(--color-amber);
+    background: var(--color-amber-soft);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .crab-fade-in {
+      animation: none;
+    }
   }
 }

@@ -15,7 +15,7 @@ const sidebarItems: SidebarItem[] = navRoutes.map(({ path, label, icon }) => ({
   icon,
 }));
 
-/** 当前路径属于哪个导航项，如 /dashboard/123 → /dashboard */
+/** 当前路径属于哪个导航项，如 /clusters/123 → /clusters */
 const findSelectedKey = (pathname: string) =>
   navRoutes.find(
     ({ path }) => pathname === path || pathname.startsWith(`${path}/`),

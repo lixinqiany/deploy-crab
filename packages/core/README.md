@@ -14,7 +14,8 @@ server 和以后的 CLI 共用这里的代码。每个源文件单独输出，�
 | `@deploy-crab/core/storage/document-format`     | 文件格式抽象类 `DocumentFormat`：扩展名与解析、序列化方式                                                                                                                |
 | `@deploy-crab/core/storage/yaml-format`         | YAML 格式 `YamlFormat`                                                                                                                                                   |
 | `@deploy-crab/core/errors/domain-error`         | 业务错误基类 `DomainError` 及 `ValidationError`、`NotFoundError`、`ConflictError`、`InvalidReferenceError`、`InUseError`，与 HTTP 无关，由 server 的异常过滤器翻译成响应 |
-| `@deploy-crab/core/inventory/host-service`      | 主机业务规则 `HostService`：增删改查，名称唯一、跳板主机存在且不成环、被依赖时不能删除；只依赖 `DocumentStore`，不依赖 Nest                                              |
+| `@deploy-crab/core/inventory/host-service`      | 主机业务规则 `HostService`：增删改查，名称唯一、跳板主机存在且不成环、仍被跳板或集群引用时不能删除；只依赖 `DocumentStore`，不依赖 Nest                                  |
+| `@deploy-crab/core/inventory/cluster-service`   | 集群业务规则 `ClusterService`：增删改查，名称唯一、成员引用的主机必须存在；只依赖 `DocumentStore`，不依赖 Nest                                                           |
 | `@deploy-crab/core/utils/atomic-write`          | 原子写文件                                                                                                                                                               |
 | `@deploy-crab/core/utils/defined-fields`        | `definedFields`：去掉值为 undefined 的字段，用于部分更新时不覆盖已有值                                                                                                   |
 | `@deploy-crab/core/utils/mutex`                 | 进程内异步互斥锁                                                                                                                                                         |

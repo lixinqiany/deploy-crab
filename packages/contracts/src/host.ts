@@ -95,6 +95,8 @@ export const CreateHostInput = z
   })
   .meta({ id: 'CreateHostInput' });
 export type CreateHostInput = z.output<typeof CreateHostInput>;
+/** 新建主机的请求体：带默认值的字段可以省略 */
+export type CreateHostBody = z.input<typeof CreateHostInput>;
 
 /** 修改主机：只修改传入的字段；`jumpHostId: null` 表示改回直连 */
 export const UpdateHostInput = z
@@ -102,3 +104,5 @@ export const UpdateHostInput = z
   .partial()
   .meta({ id: 'UpdateHostInput' });
 export type UpdateHostInput = z.output<typeof UpdateHostInput>;
+/** 修改主机的请求体 */
+export type UpdateHostBody = z.input<typeof UpdateHostInput>;

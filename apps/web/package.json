@@ -14,8 +14,11 @@
   "dependencies": {
     "@ant-design/cssinjs": "2.1.2",
     "@ant-design/icons": "6.3.4",
+    "@deploy-crab/contracts": "workspace:*",
     "@deploy-crab/ui": "workspace:*",
+    "@tanstack/react-query": "5.106.1",
     "antd": "6.7.0",
+    "axios": "1.21.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router": "8.5.1"
