@@ -10,6 +10,9 @@
     "outDir": "./dist",
     "strictPropertyInitialization": false,
     "types": ["vitest/globals", "node"],
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   }
 }

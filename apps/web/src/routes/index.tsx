@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router';
-import { CrabShell } from '../layouts/CrabShell';
-import { NotFoundView } from '../views/NotFoundView';
+import { CrabShell } from '@/layouts/CrabShell';
+import { NotFoundView } from '@/views/NotFoundView';
 import { navRoutes } from './navigation';
 
 export const router = createBrowserRouter([

@@ -3,9 +3,9 @@ import type { Host } from '@deploy-crab/contracts/host';
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { App, Button, Drawer, Form, Input, Select } from 'antd';
 import { useEffect, useMemo } from 'react';
-import { applyServerErrors } from '../../../utils/form-errors';
-import { sshTarget } from '../../../utils/ssh';
-import { useSaveCluster } from '../useInventory';
+import { applyServerErrors } from '@/utils/form-errors';
+import { sshTarget } from '@/utils/ssh';
+import { useSaveCluster } from '@/views/inventory/useInventory';
 
 interface ClusterFormValues {
   name: string;

@@ -20,6 +20,18 @@ Tailwind 通过 `@tailwindcss/vite` 接入构建，入口为 `src/style.css`，�
 
 `src/main.tsx` 配置了 `StyleProvider`、`ConfigProvider` 和 Ant Design 的 `App` 上下文；组件内可通过 `App.useApp()` 使用 `message`、`notification` 和 `modal`。全局 CSS 层级为 `theme, base, antd, components, utilities`，让 Tailwind 工具类可以覆盖 Ant Design 样式。基础样式由 Tailwind Preflight 提供。
 
+## 导入路径
+
+`@/` 指向 `src/`，在 `tsconfig.json` 的 `paths` 中定义，Vite 通过 `resolve.tsconfigPaths` 读取同一份配置：
+
+```ts
+import { ApiRequestError } from '@/api/http';
+import { sshCommand } from '@/utils/ssh';
+import { groupCounts } from './groups';
+```
+
+跨目录（`api`、`utils`、`views` 等）用 `@/`；同一功能目录内的文件用 `./`。共享包仍按子路径导入，如 `@deploy-crab/ui/button/CopyButton`。
+
 ## 开发与构建
 
 开发时另外启动 `pnpm dev:server`。默认 Web 端口为 5173，后端端口为 3000；使用 `WEB_PORT` 和 `PORT` 覆盖。开发服务与本地预览将 `/api` 代理到后端。

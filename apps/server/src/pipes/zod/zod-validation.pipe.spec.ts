@@ -1,7 +1,7 @@
 import { ValidationError } from '@deploy-crab/core/errors/domain-error';
 import type { ArgumentMetadata } from '@nestjs/common';
 import { z } from 'zod';
-import { createZodDto } from '../../utils/zod-dto';
+import { createZodDto } from '@/utils/zod-dto';
 import { ZodValidationPipe } from './zod-validation.pipe';
 
 const PersonInput = z.object({

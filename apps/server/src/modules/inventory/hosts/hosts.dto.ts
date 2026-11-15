@@ -1,7 +1,7 @@
 import { ResourceId } from '@deploy-crab/contracts/fields';
 import { CreateHostInput, UpdateHostInput } from '@deploy-crab/contracts/host';
 import { z } from 'zod';
-import { createZodDto } from '../../../utils/zod-dto';
+import { createZodDto } from '@/utils/zod-dto';
 
 /** `POST /hosts` 的请求体 */
 export class CreateHostDto extends createZodDto(CreateHostInput) {}

@@ -10,9 +10,9 @@ import type {
 } from '@deploy-crab/contracts/host';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { clustersApi } from '../../api/clusters';
-import { hostsApi } from '../../api/hosts';
-import { queryKeys } from '../../api/query-client';
+import { clustersApi } from '@/api/clusters';
+import { hostsApi } from '@/api/hosts';
+import { queryKeys } from '@/api/query-client';
 
 export const useHosts = () =>
   useQuery({ queryKey: queryKeys.hosts, queryFn: hostsApi.list });

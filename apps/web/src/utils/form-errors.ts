@@ -1,6 +1,6 @@
 import type { ApiErrorIssue } from '@deploy-crab/contracts/error';
 import type { FormInstance } from 'antd';
-import { ApiRequestError } from '../api/http';
+import { ApiRequestError } from '@/api/http';
 
 /**
  * 把保存失败的错误显示到表单上：

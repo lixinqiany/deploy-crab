@@ -1,5 +1,10 @@
 {
   "extends": "@deploy-crab/typescript-config/react.json",
   "include": ["src", "vite.config.ts"],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "exclude": ["node_modules", "dist", "coverage"],
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
 }

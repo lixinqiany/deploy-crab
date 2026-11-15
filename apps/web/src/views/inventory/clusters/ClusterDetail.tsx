@@ -8,9 +8,9 @@ import {
 } from '@ant-design/icons';
 import { App, Button, Popconfirm } from 'antd';
 import { useState } from 'react';
-import { ApiRequestError } from '../../../api/http';
-import { sshCommand, sshTarget } from '../../../utils/ssh';
-import { useDeleteCluster } from '../useInventory';
+import { ApiRequestError } from '@/api/http';
+import { sshCommand, sshTarget } from '@/utils/ssh';
+import { useDeleteCluster } from '@/views/inventory/useInventory';
 import { groupCounts, memberViews } from './groups';
 
 interface ClusterDetailProps {

@@ -6,7 +6,7 @@ import {
   type PipeTransform,
 } from '@nestjs/common';
 import type { z } from 'zod';
-import { isZodDto } from '../../utils/zod-dto';
+import { isZodDto } from '@/utils/zod-dto';
 
 /**
  * 全局校验 pipe：参数类型是 `ZodDto` 的子类时，用它的 schema 校验并转换参数。

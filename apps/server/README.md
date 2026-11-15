@@ -10,6 +10,12 @@ Web 和 Server 分别启动。开发时在两个终端执行 `pnpm dev:server` �
 
 开发入口 `dev.ts` 编译到 `.dev/`；生产入口 `src/main.ts` 编译到 `dist/main.js`，共用 `src/bootstrap.ts`。Turbo 监听后端和 core 的变化并重启，正式启动只运行构建后的 JavaScript。数据目录默认为 `~/.deploy-crab/`，可用启动参数 `--data-dir <路径>` 指定，相对路径基于启动工作目录解析。开发脚本 `dev` 传入 `--data-dir ../../.deploy-crab`（pnpm 在包目录 `apps/server` 下执行脚本），开发数据因此放在仓库根目录。
 
+## 导入路径
+
+`@/` 指向 `src/`，在 `tsconfig.json` 的 `paths` 中定义。Nest 的 Rspack 构建按 tsconfig paths 解析并把它打进产物，`rspack.config.ts` 的 externals 不会把它当成 npm 包；Vitest 通过 `resolve.tsconfigPaths` 读取同一份配置。
+
+跨目录（`utils`、`pipes`、`modules`）和测试中引用源码用 `@/`，如 `import { AppModule } from '@/app.module'`；同一模块目录内用 `./`。
+
 ## 断点调试
 
 在 VS Code 中打开仓库根目录，进入“运行和调试”，选择 `Server: Debug` 并按 F5。它会启动现有的 `pnpm dev:server`，保留类型检查、lint 和保存后重启；调试器自动连接到 Nest 启动的应用进程及重启后的新进程。

@@ -7,6 +7,8 @@ const { importer, bundledPackages } = await getRuntimeDependencies(
   import.meta.dirname,
 );
 const external = new Set(Object.keys(importer.specifiers));
+/** tsconfig.json 中 `@/*` 指向 src，由 Nest 的 rspack 配置按 tsconfig paths 解析并打包 */
+const SOURCE_ALIAS = '@/';
 
 export default function configure(options: Configuration): Configuration {
   if (typeof options.entry !== 'string') {
@@ -30,7 +32,12 @@ export default function configure(options: Configuration): Configuration {
     // Keep Nest's SWC decorator metadata and ESM defaults. Only workspace code is bundled.
     externals: [
       ({ request }, callback) => {
-        if (!request || request.startsWith('.') || isAbsolute(request))
+        if (
+          !request ||
+          request.startsWith('.') ||
+          request.startsWith(SOURCE_ALIAS) ||
+          isAbsolute(request)
+        )
           return callback();
         const name = request
           .split('/')

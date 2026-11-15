@@ -4,7 +4,7 @@ import {
 } from '@deploy-crab/contracts/cluster';
 import { ResourceId } from '@deploy-crab/contracts/fields';
 import { z } from 'zod';
-import { createZodDto } from '../../../utils/zod-dto';
+import { createZodDto } from '@/utils/zod-dto';
 
 /** `POST /clusters` 的请求体 */
 export class CreateClusterDto extends createZodDto(CreateClusterInput) {}

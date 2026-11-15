@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
-import { InventoryView } from '../views/inventory/InventoryView';
-import HostSvg from '../assets/icon/host.svg?react';
+import { InventoryView } from '@/views/inventory/InventoryView';
+import HostSvg from '@/assets/icon/host.svg?react';
 
 export interface NavRoute {
   /** 路由路径，同时作为侧边栏菜单项的 key */

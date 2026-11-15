@@ -6,8 +6,8 @@ import {
 } from '@deploy-crab/ui/layout/sidebar/Sidebar';
 import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
 import { useSidebarResize } from '@deploy-crab/ui/hooks/useSidebarResize';
-import { navRoutes } from '../routes/navigation';
-import CrabSvg from '../assets/icon/crab.svg?react';
+import { navRoutes } from '@/routes/navigation';
+import CrabSvg from '@/assets/icon/crab.svg?react';
 
 const sidebarItems: SidebarItem[] = navRoutes.map(({ path, label, icon }) => ({
   key: path,

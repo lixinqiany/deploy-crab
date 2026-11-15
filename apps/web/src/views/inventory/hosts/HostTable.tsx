@@ -14,9 +14,9 @@ import {
   Tooltip,
 } from 'antd';
 import { useMemo, useState } from 'react';
-import { ApiRequestError } from '../../../api/http';
-import { sshCommand, sshTarget } from '../../../utils/ssh';
-import { useDeleteHost } from '../useInventory';
+import { ApiRequestError } from '@/api/http';
+import { sshCommand, sshTarget } from '@/utils/ssh';
+import { useDeleteHost } from '@/views/inventory/useInventory';
 
 /** 名称、地址、用户、标签任一包含关键字即匹配，不区分大小写 */
 const matches = (host: Host, keyword: string) =>

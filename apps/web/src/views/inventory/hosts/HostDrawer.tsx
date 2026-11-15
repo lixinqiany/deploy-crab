@@ -11,9 +11,9 @@ import {
   Select,
 } from 'antd';
 import { useEffect, useMemo } from 'react';
-import { applyServerErrors } from '../../../utils/form-errors';
-import { jumpChain, sshCommand } from '../../../utils/ssh';
-import { useSaveHost } from '../useInventory';
+import { applyServerErrors } from '@/utils/form-errors';
+import { jumpChain, sshCommand } from '@/utils/ssh';
+import { useSaveHost } from '@/views/inventory/useInventory';
 
 interface HostFormValues {
   name: string;
