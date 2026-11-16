@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { CreateClusterInput } from '@deploy-crab/contracts/cluster';
 import type { CreateHostInput, Host } from '@deploy-crab/contracts/host';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,7 +10,7 @@ import {
   InvalidReferenceError,
   NotFoundError,
 } from '../errors/domain-error';
-import { FileDocumentStore } from '../storage/file-document-store';
+import { Database, DATABASE_FILENAME } from '../database/database';
 import { ClusterService } from './cluster-service';
 import { HostService } from './host-service';
 
@@ -39,6 +40,7 @@ const clusterInput = (
 
 describe('ClusterService', () => {
   let root: string;
+  let database: Database;
   let hosts: HostService;
   let clusters: ClusterService;
   let web: Host;
@@ -46,13 +48,19 @@ describe('ClusterService', () => {
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'deploy-crab-clusters-'));
-    const store = new FileDocumentStore(root);
-    hosts = new HostService(store);
-    clusters = new ClusterService(store);
+    database = new Database(
+      join(root, DATABASE_FILENAME),
+      fileURLToPath(new URL('../../migrations/', import.meta.url)),
+    );
+    hosts = new HostService(database);
+    clusters = new ClusterService(database);
     web = await hosts.create(hostInput('web-1'));
     box = await hosts.create(hostInput('box-1'));
   });
-  afterEach(() => rm(root, { recursive: true, force: true }));
+  afterEach(async () => {
+    database.close();
+    await rm(root, { recursive: true, force: true });
+  });
 
   describe('create / get / list', () => {
     it('可以先建空集群', async () => {

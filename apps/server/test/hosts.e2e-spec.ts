@@ -1,12 +1,20 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Host } from '@deploy-crab/contracts/host';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '@/app.module';
+
+const migrationsDirectory = fileURLToPath(
+  new URL(
+    '../../migrations/',
+    import.meta.resolve('@deploy-crab/core/database/database'),
+  ),
+);
 
 const MISSING_ID = '00000000-0000-4000-8000-000000000000';
 
@@ -17,7 +25,7 @@ describe('Hosts (e2e)', () => {
   beforeEach(async () => {
     dataDirectory = await mkdtemp(join(tmpdir(), 'deploy-crab-hosts-e2e-'));
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule.forRoot({ dataDirectory })],
+      imports: [AppModule.forRoot({ dataDirectory, migrationsDirectory })],
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();

@@ -24,4 +24,6 @@ pnpm exec tsc --noEmit -p scripts/tsconfig.json
 pnpm exec eslint scripts --max-warnings=0
 ```
 
+Server 的 Rspack 配置负责复制 core 的 SQLite 迁移目录到构建产物。运行依赖分析会收集 Drizzle 和 better-sqlite3，`allowBuilds` 设置随独立产物分发。
+
 交付验证应把应用的整个 `dist` 复制到仓库外，执行 `pnpm install --prod --frozen-lockfile` 和 `pnpm start`。

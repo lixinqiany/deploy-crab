@@ -59,6 +59,8 @@ pnpm start
 - `--data-dir <路径>`：数据目录。默认为 `~/.deploy-crab/`；`pnpm dev:server` 的开发脚本传入 `--data-dir ../../.deploy-crab`，开发数据因此放在仓库根目录。用启动参数覆盖时，相对路径以启动工作目录为基准，例如 `pnpm start -- --data-dir /srv/deploy-crab`。
 - `WEB_PORT`：前端端口，默认 `5173`。修改 API 端口时，前后端开发进程需设置相同的 `PORT`。
 
+主机与集群保存在实例目录的 `deploy-crab.sqlite` 中，四张业务表共用一个数据库文件。应用启动时自动建库并执行版本化迁移，不需要单独运行数据库服务。SQLite 自行管理同目录下的 `-wal`、`-shm` 文件；旧 YAML 存储不再使用。
+
 更多细节见[后端说明](apps/server/README.md)和[构建文档](scripts/README.md)。
 
 ## 验证

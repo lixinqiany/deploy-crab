@@ -10,6 +10,12 @@ Web 和 Server 分别启动。开发时在两个终端执行 `pnpm dev:server` �
 
 开发入口 `dev.ts` 编译到 `.dev/`；生产入口 `src/main.ts` 编译到 `dist/main.js`，共用 `src/bootstrap.ts`。Turbo 监听后端和 core 的变化并重启，正式启动只运行构建后的 JavaScript。数据目录默认为 `~/.deploy-crab/`，可用启动参数 `--data-dir <路径>` 指定，相对路径基于启动工作目录解析。开发脚本 `dev` 传入 `--data-dir ../../.deploy-crab`（pnpm 在包目录 `apps/server` 下执行脚本），开发数据因此放在仓库根目录。
 
+## 数据库
+
+`DatabaseModule` 打开数据目录下的 `deploy-crab.sqlite`，使用 Drizzle + better-sqlite3。主机、集群、成员、成员分组共用一个数据库文件，启动时迁移，退出时关闭连接。旧 YAML 存储已移除，不导入旧数据。更多表结构和迁移流程见 [core 说明](../../packages/core/README.md)。
+
+源码测试向 `AppModule.forRoot()` 传入迁移目录；开发和生产构建从入口文件旁的 `migrations/` 读取 SQL 和配套元数据。初始化失败时不会开始监听。
+
 ## 导入路径
 
 `@/` 指向 `src/`，在 `tsconfig.json` 的 `paths` 中定义。Nest 的 Rspack 构建按 tsconfig paths 解析并把它打进产物，`rspack.config.ts` 的 externals 不会把它当成 npm 包；Vitest 通过 `resolve.tsconfigPaths` 读取同一份配置。
@@ -36,3 +42,7 @@ pnpm start
 ```
 
 目标机器需要 Node.js 和 pnpm，不需要 Nest CLI、Rspack、TypeScript 或原仓库。`assets/` 中的应用资源会被复制到 `dist/assets/`。
+
+Rspack 同时将 core 的 `migrations/` 复制到输出目录，迁移资源必须与 JS 一起交付。better-sqlite3 保持外部运行依赖，pnpm 构建许可随独立产物分发；目标平台需要支持其原生扩展，必要时准备 node-gyp 编译工具链。
+
+core 源码会被打入 server，而数据库库保留为外部引用，因此 server 也直接声明与 core 同版本的 `drizzle-orm` 和 `better-sqlite3`，供 pnpm 隔离依赖布局下的 `.dev/` 和本地 `dist/` 解析。构建脚本会检查两个包的依赖版本一致，并将运行依赖合并进独立交付清单。

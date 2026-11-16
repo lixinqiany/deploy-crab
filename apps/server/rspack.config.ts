@@ -1,7 +1,7 @@
 import { isBuiltin } from 'node:module';
 import { basename, isAbsolute, resolve } from 'node:path';
 import { getRuntimeDependencies } from '../../scripts/build/dependencies.ts';
-import type { Configuration } from '@rspack/core';
+import { rspack, type Configuration } from '@rspack/core';
 
 const { importer, bundledPackages } = await getRuntimeDependencies(
   import.meta.dirname,
@@ -18,6 +18,20 @@ export default function configure(options: Configuration): Configuration {
   return {
     ...options,
     entry: resolve(import.meta.dirname, development ? 'dev.ts' : 'src/main.ts'),
+    plugins: [
+      ...(options.plugins ?? []),
+      new rspack.CopyRspackPlugin({
+        patterns: [
+          {
+            from: resolve(
+              import.meta.dirname,
+              '../../packages/core/migrations',
+            ),
+            to: 'migrations',
+          },
+        ],
+      }),
+    ],
     output: {
       ...options.output,
       path: resolve(import.meta.dirname, development ? '.dev' : 'dist'),

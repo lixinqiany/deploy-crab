@@ -59,6 +59,8 @@ Only Node.js and pnpm are required on the target.
 - `--data-dir <path>`: data directory. Defaults to `~/.deploy-crab/`; `pnpm dev:server` passes `--data-dir ../../.deploy-crab`, so development data stays in the repository root. Relative paths resolve from the working directory, e.g. `pnpm start -- --data-dir /srv/deploy-crab`.
 - `WEB_PORT`: frontend port; defaults to `5173`. Set the same `PORT` for both development processes when changing the API port.
 
+Hosts and clusters are stored in `deploy-crab.sqlite` inside the instance data directory. All four business tables share one database file. Startup creates the database and applies versioned migrations; no database server is needed. SQLite manages adjacent `-wal` and `-shm` files. Legacy YAML storage is no longer used.
+
 See the [server guide](apps/server/README.md) and [build documentation](scripts/README.md) for details (Chinese).
 
 ## Validation

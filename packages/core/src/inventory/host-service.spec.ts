@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { CreateHostInput } from '@deploy-crab/contracts/host';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -10,7 +11,7 @@ import {
   NotFoundError,
   ValidationError,
 } from '../errors/domain-error';
-import { FileDocumentStore } from '../storage/file-document-store';
+import { Database, DATABASE_FILENAME } from '../database/database';
 import { ClusterService } from './cluster-service';
 import { HostService } from './host-service';
 
@@ -31,16 +32,23 @@ const input = (overrides: Partial<CreateHostInput> = {}): CreateHostInput => ({
 
 describe('HostService', () => {
   let root: string;
+  let database: Database;
   let hosts: HostService;
   let clusters: ClusterService;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'deploy-crab-hosts-'));
-    const store = new FileDocumentStore(root);
-    hosts = new HostService(store);
-    clusters = new ClusterService(store);
+    database = new Database(
+      join(root, DATABASE_FILENAME),
+      fileURLToPath(new URL('../../migrations/', import.meta.url)),
+    );
+    hosts = new HostService(database);
+    clusters = new ClusterService(database);
   });
-  afterEach(() => rm(root, { recursive: true, force: true }));
+  afterEach(async () => {
+    database.close();
+    await rm(root, { recursive: true, force: true });
+  });
 
   describe('create / get / list', () => {
     it('生成 id 和时间戳，可以读回', async () => {

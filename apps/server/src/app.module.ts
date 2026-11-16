@@ -5,13 +5,13 @@ import { AppService } from './app.service';
 import { ApiExceptionFilter } from './filters/api-exception/api-exception.filter';
 import { ClustersModule } from './modules/inventory/clusters/clusters.module';
 import { HostsModule } from './modules/inventory/hosts/hosts.module';
-import { StorageModule } from './modules/storage/storage.module';
+import {
+  DatabaseModule,
+  type DatabaseModuleOptions,
+} from './modules/database/database.module';
 import { ZodValidationPipe } from './pipes/zod/zod-validation.pipe';
 
-export interface AppModuleOptions {
-  /** 实例数据目录，由启动参数 `--data-dir` 决定；测试时传入临时目录 */
-  dataDirectory: string;
-}
+export type AppModuleOptions = DatabaseModuleOptions;
 
 @Module({
   // 不需要启动参数的模块直接写在这里
@@ -30,10 +30,10 @@ export class AppModule {
    * 数据目录要到启动时才知道，所以需要它的模块在这里传入；
    * 返回的 imports 会和 `@Module` 里的 imports 合并。
    */
-  static forRoot({ dataDirectory }: AppModuleOptions): DynamicModule {
+  static forRoot(options: AppModuleOptions): DynamicModule {
     return {
       module: AppModule,
-      imports: [StorageModule.forRoot({ dataDirectory })],
+      imports: [DatabaseModule.forRoot(options)],
     };
   }
 }
