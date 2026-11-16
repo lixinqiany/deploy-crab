@@ -31,7 +31,11 @@ import { useState } from 'react';
 import { tasksApi } from '@/api/tasks';
 import { TaskCallEditor } from './TaskCallEditor';
 import { TaskHooksEditor } from './TaskHooksEditor';
-import { resolveInputDrafts, type InputDrafts } from './task-input-model';
+import {
+  resolveInputDrafts,
+  type InputDrafts,
+  type InputFieldDraft,
+} from './task-input-model';
 import {
   parameterDraft,
   resolveParameterDrafts,
@@ -75,14 +79,18 @@ export const TaskEditor = ({
   const parameterState = resolveParameterDrafts(parameterDrafts);
   const inputDraft = (path: string) => ({
     fields: inputDrafts[path] ?? {},
-    onChange: (name: string, text: string) =>
+    onChange: (name: string, field: InputFieldDraft) =>
       setInputDrafts((previous) => ({
         ...previous,
-        [path]: { ...previous[path], [name]: text },
+        [path]: { ...previous[path], [name]: field },
       })),
     clear: () => setInputDrafts((previous) => ({ ...previous, [path]: {} })),
   });
-  const resolved = resolveInputDrafts(draft.definition, inputDrafts, tasks);
+  const resolved = resolveInputDrafts(
+    { ...draft.definition, parameters: parameterState.parameters },
+    inputDrafts,
+    tasks,
+  );
   const body = {
     ...draft,
     definition: {

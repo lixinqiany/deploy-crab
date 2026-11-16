@@ -285,6 +285,84 @@ describe('任务创建 (e2e)', () => {
     expect(probe).not.toHaveBeenCalled();
   });
 
+  it('绑定可保存到步骤和两层钩子并持久化，错误绑定和双重赋值由服务端拒绝', async () => {
+    const child = await create({
+      ...body('绑定目标'),
+      definition: {
+        ...body().definition,
+        parameters: [{ name: 'url', required: true }],
+      },
+    });
+    const call = {
+      kind: 'task' as const,
+      taskId: child.id,
+      inputBindings: { url: { from: 'taskInput' as const, key: 'mirror' } },
+    };
+    const hook = { key: 'hook', title: '钩子', call };
+    const parent = await create({
+      name: '绑定调用者',
+      definition: {
+        parameters: [{ name: 'mirror' }],
+        steps: [
+          {
+            id: 'ref',
+            title: '引用',
+            call,
+            hooks: { before: [hook], afterSuccess: [hook], finally: [hook] },
+          },
+        ],
+        hooks: { before: [hook], afterSuccess: [hook], finally: [hook] },
+      },
+    });
+    expect(parent.definition.steps[0]?.call).toEqual(call);
+    await app.close();
+    await boot();
+    await http().get(`/tasks/${parent.id}`).expect(200, parent);
+    const replaceCall = (next: unknown) => ({
+      ...replacement(parent),
+      definition: {
+        ...parent.definition,
+        steps: [{ id: 'ref', title: '引用', call: next }],
+      },
+    });
+    for (const inputBindings of [
+      { url: { from: 'taskInput', key: 'missing' } },
+      { missing: { from: 'taskInput', key: 'mirror' } },
+    ])
+      await http()
+        .put(`/tasks/${parent.id}`)
+        .send(replaceCall({ ...call, inputBindings }))
+        .expect(422);
+    await http()
+      .put(`/tasks/${parent.id}`)
+      .send(replaceCall({ ...call, input: { url: 'ambiguous' } }))
+      .expect(400);
+    await http()
+      .put(`/tasks/${parent.id}`)
+      .send({
+        ...replacement(parent),
+        definition: {
+          ...parent.definition,
+          parameters: [{ name: 'mirror', type: 'number' }],
+        },
+      })
+      .expect(422);
+    await http()
+      .put(`/tasks/${child.id}`)
+      .send({
+        ...replacement(child),
+        definition: {
+          ...child.definition,
+          parameters: [{ name: 'url', type: 'boolean' }],
+        },
+      })
+      .expect(422);
+    await http().get(`/tasks/${parent.id}`).expect(200, parent);
+    await http().get(`/tasks/${child.id}`).expect(200, child);
+    expect(probe).not.toHaveBeenCalled();
+    expect(exec).not.toHaveBeenCalled();
+  });
+
   it('组合已有任务与脚本，保护引用并拒绝任务循环', async () => {
     const child = await create(body('child'));
     expect(child.labels).toEqual([]);

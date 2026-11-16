@@ -44,6 +44,14 @@ const CallPreview = ({
             </pre>
           </details>
         )}
+        {Object.entries(call.inputBindings ?? {}).map(([name, binding]) => (
+          <p key={name} className="mb-0 mt-2 break-all text-xs text-sand-11">
+            <code>{name}</code> ← 当前任务参数 <code>{binding.key}</code>
+            <span className="ml-2 text-sand-9">
+              未提供时按子任务默认值和必填规则处理
+            </span>
+          </p>
+        ))}
       </div>
     );
   if (call.action === 'ssh.probe')

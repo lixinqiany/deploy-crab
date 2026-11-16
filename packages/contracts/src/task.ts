@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { auditFields, Description, DisplayName, ResourceId } from './fields';
 import { SshScriptInput } from './ssh-script';
 import { TaskInput, TaskParameters } from './task-input';
+import { TaskInputBindings } from './task-input-bindings';
 
 export const TASK_ACTIONS = [
   {
@@ -63,8 +64,18 @@ export const TaskCall = z.discriminatedUnion('kind', [
       kind: z.literal('task'),
       taskId: ResourceId,
       input: TaskInput.optional(),
+      inputBindings: TaskInputBindings.optional(),
     })
-    .strict(),
+    .strict()
+    .superRefine((call, ctx) => {
+      for (const name of Object.keys(call.inputBindings ?? {}))
+        if (call.input?.[name] !== undefined)
+          ctx.addIssue({
+            code: 'custom',
+            path: ['inputBindings', name],
+            message: '同一参数不能同时设置固定值和绑定',
+          });
+    }),
 ]);
 export type TaskCall = z.output<typeof TaskCall>;
 

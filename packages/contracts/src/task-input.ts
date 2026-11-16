@@ -17,20 +17,22 @@ export const PARAMETER_TYPE_LABELS = {
   json: 'JSON',
 };
 
+export const TaskParameterName = z
+  .string()
+  .min(1, '请填写参数名')
+  .max(64)
+  .regex(
+    /^[A-Za-z_][A-Za-z0-9_]*$/,
+    '参数名只能使用字母、数字和下划线，不能以数字开头',
+  )
+  .refine(
+    (name) => !['__proto__', 'constructor', 'prototype'].includes(name),
+    '请使用其他参数名',
+  );
+
 export const TaskParameter = z
   .object({
-    name: z
-      .string()
-      .min(1, '请填写参数名')
-      .max(64)
-      .regex(
-        /^[A-Za-z_][A-Za-z0-9_]*$/,
-        '参数名只能使用字母、数字和下划线，不能以数字开头',
-      )
-      .refine(
-        (name) => !['__proto__', 'constructor', 'prototype'].includes(name),
-        '请使用其他参数名',
-      ),
+    name: TaskParameterName,
     title: z.string().trim().max(64).default(''),
     description: z.string().trim().max(500).default(''),
     type: z.enum(PARAMETER_TYPES).default('string'),

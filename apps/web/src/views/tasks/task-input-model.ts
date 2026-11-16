@@ -1,8 +1,8 @@
+import type { TaskParameter } from '@deploy-crab/contracts/task-input';
 import {
-  resolveTaskInput,
-  type TaskInput,
-  type TaskParameter,
-} from '@deploy-crab/contracts/task-input';
+  validateTaskInputMapping,
+  type TaskInputMapping,
+} from '@deploy-crab/contracts/task-input-bindings';
 import {
   TASK_HOOK_PHASES,
   type Task,
@@ -10,39 +10,72 @@ import {
   type TaskDefinition,
   type TaskHooks,
 } from '@deploy-crab/contracts/task';
-import { parseParameterValue } from './parameter-editor-model';
+import {
+  formatParameterValue,
+  parseParameterValue,
+} from './parameter-editor-model';
 
-export type FieldDrafts = Record<string, string>;
+export interface InputFieldDraft {
+  mode: 'omit' | 'value' | 'binding';
+  text: string;
+  sourceKey: string;
+}
+export type FieldDrafts = Record<string, InputFieldDraft>;
 export type InputDrafts = Record<string, FieldDrafts>;
 export interface InputDraft {
   fields: FieldDrafts;
-  onChange: (name: string, text: string) => void;
+  onChange: (name: string, field: InputFieldDraft) => void;
   clear: () => void;
+}
+
+export function inputFieldDraft(
+  parameter: TaskParameter,
+  mapping: TaskInputMapping,
+): InputFieldDraft {
+  const value = mapping.input?.[parameter.name];
+  const binding = mapping.inputBindings?.[parameter.name];
+  return {
+    mode: binding ? 'binding' : value !== undefined ? 'value' : 'omit',
+    text:
+      value === undefined ? '' : formatParameterValue(parameter.type, value),
+    sourceKey: binding?.key ?? '',
+  };
 }
 
 /** 仅保存用户覆盖的值；默认值在调用时解析，避免固定成旧版本的默认值。 */
 export function resolveCallInput(
   parameters: TaskParameter[],
-  original: TaskInput = {},
+  mapping: TaskInputMapping = {},
   fields: FieldDrafts = {},
+  parentParameters: TaskParameter[] = [],
 ) {
-  const input = structuredClone(original);
+  const input = structuredClone(mapping.input ?? {});
+  const inputBindings = structuredClone(mapping.inputBindings ?? {});
   const errors: Record<string, string> = {};
-  for (const [name, text] of Object.entries(fields)) {
+  for (const [name, field] of Object.entries(fields)) {
     delete input[name];
-    if (text === '') continue;
+    delete inputBindings[name];
+    if (field.mode === 'omit') continue;
     const parameter = parameters.find((item) => item.name === name);
     if (!parameter) {
       errors[name] = `未声明参数「${name}」`;
       continue;
     }
-    const parsed = parseParameterValue(parameter.type, text);
+    if (field.mode === 'binding') {
+      if (!field.sourceKey) errors[name] = '请选择当前任务的参数';
+      else inputBindings[name] = { from: 'taskInput', key: field.sourceKey };
+      continue;
+    }
+    const parsed = parseParameterValue(parameter.type, field.text);
     if (parsed.error !== null) errors[name] = parsed.error;
     else input[name] = parsed.value;
   }
-  for (const issue of resolveTaskInput(parameters, input).issues)
+  for (const issue of validateTaskInputMapping(parentParameters, parameters, {
+    input,
+    inputBindings,
+  }).issues)
     errors[issue.name] ??= issue.message;
-  return { input, errors };
+  return { input, inputBindings, errors };
 }
 
 /** 草稿归整个编辑器管理，切换、重排和复制步骤不丢失未完成的输入。 */
@@ -62,8 +95,9 @@ export function resolveInputDrafts(
     }
     const resolved = resolveCallInput(
       task.definition.parameters,
-      call.input,
+      call,
       drafts[path],
+      next.parameters,
     );
     errors.push(
       ...Object.values(resolved.errors).map((error) => `${title}：${error}`),
@@ -73,6 +107,10 @@ export function resolveInputDrafts(
       taskId: call.taskId,
       ...(Object.keys(resolved.input).length || call.input !== undefined
         ? { input: resolved.input }
+        : {}),
+      ...(Object.keys(resolved.inputBindings).length ||
+      call.inputBindings !== undefined
+        ? { inputBindings: resolved.inputBindings }
         : {}),
     };
   };

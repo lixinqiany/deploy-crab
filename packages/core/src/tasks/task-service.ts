@@ -8,7 +8,7 @@ import {
   type TaskCatalog,
   type UpdateTaskInput,
 } from '@deploy-crab/contracts/task';
-import { resolveTaskInput } from '@deploy-crab/contracts/task-input';
+import { validateTaskInputMapping } from '@deploy-crab/contracts/task-input-bindings';
 import type { Database } from '../database/database';
 import {
   ConflictError,
@@ -125,9 +125,10 @@ export class TaskService {
           call.taskId === task.id ? task : repository.get(call.taskId);
         if (!child)
           throw new InvalidReferenceError('引用的任务不存在或已被删除');
-        const { issues } = resolveTaskInput(
+        const { issues } = validateTaskInputMapping(
+          owner.definition.parameters,
           child.definition.parameters,
-          call.input,
+          call,
         );
         if (issues.length)
           throw new InvalidReferenceError(

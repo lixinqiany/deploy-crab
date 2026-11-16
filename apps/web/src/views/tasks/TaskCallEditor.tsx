@@ -64,7 +64,8 @@ export const TaskCallEditor = ({
         </Form.Item>
         <TaskInputEditor
           task={tasks.find((task) => task.id === call.taskId)}
-          input={call.input}
+          mapping={call}
+          parentParameters={parameters}
           draft={inputDraft}
         />
       </>

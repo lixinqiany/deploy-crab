@@ -1,7 +1,12 @@
 import { TaskDefinition, type Task } from '@deploy-crab/contracts/task';
 import { TaskParameters } from '@deploy-crab/contracts/task-input';
 import { describe, expect, it } from 'vitest';
-import { resolveCallInput, resolveInputDrafts } from './task-input-model';
+import {
+  inputFieldDraft,
+  resolveCallInput,
+  resolveInputDrafts,
+  type InputFieldDraft,
+} from './task-input-model';
 import {
   parameterDraft,
   resolveParameterDrafts,
@@ -44,6 +49,17 @@ const reference = {
   taskId: child.id,
   input: { url: 'https://example.test' },
 };
+const literal = (text: string): InputFieldDraft => ({
+  mode: 'value',
+  text,
+  sourceKey: '',
+});
+const bound = (sourceKey: string): InputFieldDraft => ({
+  mode: 'binding',
+  text: '',
+  sourceKey,
+});
+const omitted: InputFieldDraft = { mode: 'omit', text: '', sourceKey: '' };
 const definition = () =>
   TaskDefinition.parse({
     steps: [
@@ -64,15 +80,28 @@ describe('任务参数表单', () => {
   it('不填必填值会报错；可选字段留空时不固化默认值', () => {
     expect(resolveCallInput(parameters).errors.url).toContain('必填');
     expect(
-      resolveCallInput(parameters, {}, { url: 'https://example.test' }),
-    ).toEqual({ input: { url: 'https://example.test' }, errors: {} });
+      resolveCallInput(
+        parameters,
+        {},
+        { url: literal('https://example.test') },
+      ),
+    ).toEqual({
+      input: { url: 'https://example.test' },
+      inputBindings: {},
+      errors: {},
+    });
   });
   it('保留 false、0 和嵌套 JSON，空白必填字符串无效', () => {
     expect(
       resolveCallInput(
         parameters,
         {},
-        { url: ' ', enabled: 'false', count: '0', data: '[null,{"empty":""}]' },
+        {
+          url: literal(' '),
+          enabled: literal('false'),
+          count: literal('0'),
+          data: literal('[null,{"empty":""}]'),
+        },
       ),
     ).toEqual({
       input: {
@@ -81,15 +110,16 @@ describe('任务参数表单', () => {
         count: 0,
         data: [null, { empty: '' }],
       },
+      inputBindings: {},
       errors: { url: '必填参数「url」不能为空' },
     });
   });
   it('步骤和两层钩子分别解析；未完成的 JSON 不会静默保存', () => {
     const source = definition();
     const drafts = {
-      'steps.first.call': { data: '{' },
-      'steps.first.hooks.finally.cleanup': { count: '0' },
-      'hooks.before.prepare': { enabled: 'false' },
+      'steps.first.call': { data: literal('{') },
+      'steps.first.hooks.finally.cleanup': { count: literal('0') },
+      'hooks.before.prepare': { enabled: literal('false') },
     };
     const resolved = resolveInputDrafts(source, drafts, [child]);
     expect(resolved.errors).toEqual(['第一步：请填写合法的 JSON']);
@@ -102,26 +132,115 @@ describe('任务参数表单', () => {
     expect(source).toEqual(definition());
     source.steps.shift();
     expect(resolveInputDrafts(source, drafts, [child]).errors).toEqual([]);
-    expect(drafts['steps.first.call'].data).toBe('{');
+    expect(drafts['steps.first.call'].data.text).toBe('{');
   });
   it('清空覆盖值恢复默认规则，不允许未声明字段和错误类型', () => {
     expect(
       resolveCallInput(
         parameters,
-        { url: 'x', enabled: false },
-        { enabled: '' },
+        { input: { url: 'x', enabled: false } },
+        { enabled: omitted },
       ).input,
     ).toEqual({ url: 'x' });
     expect(
-      resolveCallInput(parameters, { url: 'x', typo: 1 }).errors.typo,
+      resolveCallInput(parameters, { input: { url: 'x', typo: 1 } }).errors
+        .typo,
     ).toContain('未声明');
     expect(
-      resolveCallInput(parameters, { url: 'x' }, { count: '"3"' }).errors.count,
+      resolveCallInput(
+        parameters,
+        { input: { url: 'x' } },
+        { count: literal('"3"') },
+      ).errors.count,
     ).toContain('数字');
     expect(
-      resolveCallInput(parameters, { url: 'x', legacy: true }, { legacy: '' })
-        .errors,
+      resolveCallInput(
+        parameters,
+        { input: { url: 'x', legacy: true } },
+        { legacy: omitted },
+      ).errors,
     ).toEqual({});
+  });
+  it('绑定、固定值和不传值互斥，切换不丢失原始草稿，空字符串是显式固定值', () => {
+    const parents = TaskParameters.parse([{ name: 'source' }]);
+    const mapping = { input: { url: 'old' } };
+    const field = { ...literal('new'), ...bound('source'), text: 'new' };
+    const bindings = resolveCallInput(
+      parameters,
+      mapping,
+      { url: field },
+      parents,
+    );
+    expect(bindings).toEqual({
+      input: {},
+      inputBindings: { url: { from: 'taskInput', key: 'source' } },
+      errors: {},
+    });
+    expect(
+      resolveCallInput(
+        parameters,
+        bindings,
+        { url: { ...field, mode: 'value' } },
+        parents,
+      ).input,
+    ).toEqual({ url: 'new' });
+    expect(
+      resolveCallInput(parameters, bindings, { url: omitted }, parents).errors
+        .url,
+    ).toContain('必填');
+    expect(
+      resolveCallInput(parameters, mapping, { url: bound('') }, parents).errors
+        .url,
+    ).toContain('请选择');
+    const optional = TaskParameters.parse([
+      { name: 'url', defaultValue: 'fallback' },
+    ]);
+    expect(resolveCallInput(optional, {}, { url: literal('') }).input).toEqual({
+      url: '',
+    });
+    expect(inputFieldDraft(optional[0]!, bindings)).toEqual(bound('source'));
+    expect(field.text).toBe('new');
+  });
+  it('绑定保存覆盖所有引用位置，使用当前父参数声明且不固化默认值', () => {
+    const source = definition();
+    source.parameters = TaskParameters.parse([
+      { name: 'source', required: true },
+    ]);
+    const drafts = {
+      'steps.first.call': { url: bound('source') },
+      'steps.first.hooks.finally.cleanup': { url: bound('source') },
+      'hooks.before.prepare': { url: bound('source') },
+    };
+    const resolved = resolveInputDrafts(source, drafts, [child]);
+    expect(resolved.errors).toEqual([]);
+    for (const call of [
+      resolved.definition.steps[0]!.call,
+      resolved.definition.steps[0]!.hooks.finally[0]!.call,
+      resolved.definition.hooks.before[0]!.call,
+    ])
+      expect(call).toEqual({
+        kind: 'task',
+        taskId: child.id,
+        input: {},
+        inputBindings: { url: { from: 'taskInput', key: 'source' } },
+      });
+    expect(resolveInputDrafts(resolved.definition, {}, [child])).toEqual(
+      resolved,
+    );
+    source.parameters[0]!.name = 'renamed';
+    expect(resolveInputDrafts(source, drafts, [child]).errors).toHaveLength(3);
+    source.parameters = TaskParameters.parse([
+      { name: 'source', type: 'number' },
+    ]);
+    expect(resolveInputDrafts(source, drafts, [child]).errors[0]).toContain(
+      '类型不兼容',
+    );
+    const stale = {
+      inputBindings: { removed: { from: 'taskInput' as const, key: 'source' } },
+    };
+    expect(resolveCallInput([], stale, { removed: omitted }).errors).toEqual(
+      {},
+    );
   });
   it('参数定义卡保留默认值草稿，重复字段和非法默认值禁止保存', () => {
     const first = {

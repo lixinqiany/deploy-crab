@@ -325,4 +325,63 @@ describe('TaskService', () => {
       expect(service.get(child.id)).toEqual(child);
     }
   });
+
+  it('步骤和两层钩子允许延迟绑定，修改父或子声明不能破坏已有绑定', () => {
+    const child = service.create(
+      body('bound-child', {
+        definition: {
+          ...body().definition,
+          parameters: [{ name: 'url', required: true }],
+        },
+      }),
+    );
+    for (const position of ['step', 'task-hook', 'step-hook'] as const) {
+      const input = body(position, {
+        definition: { ...body().definition, parameters: [{ name: 'source' }] },
+      });
+      const call = {
+        kind: 'task' as const,
+        taskId: child.id,
+        inputBindings: { url: { from: 'taskInput' as const, key: 'source' } },
+      };
+      if (position === 'step') input.definition.steps[0]!.call = call;
+      else
+        (position === 'task-hook'
+          ? input.definition.hooks
+          : input.definition.steps[0]!.hooks
+        ).finally.push({
+          key: 'cleanup',
+          title: '收尾',
+          call,
+          timeoutMs: 5000,
+        });
+      const parent = service.create(input);
+      for (const parameters of [
+        [],
+        [{ name: 'renamed' }],
+        [{ name: 'source', type: 'number' as const }],
+      ]) {
+        const invalid = body(position, {
+          definition: { ...parent.definition, parameters },
+        });
+        expect(() =>
+          service.update(parent.id, { ...invalid, revision: parent.revision }),
+        ).toThrow('参数');
+        expect(service.get(parent.id)).toEqual(parent);
+      }
+      for (const parameters of [
+        [{ name: 'renamed' }],
+        [{ name: 'url', type: 'number' as const }],
+      ]) {
+        const invalid = body(child.name, {
+          definition: { ...child.definition, parameters },
+        });
+        expect(() =>
+          service.update(child.id, { ...invalid, revision: child.revision }),
+        ).toThrow(position);
+        expect(service.get(child.id)).toEqual(child);
+      }
+      service.delete(parent.id);
+    }
+  });
 });
