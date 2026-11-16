@@ -97,6 +97,7 @@ export function compileStoredTask(
         configured[phase].map((hook) => ({
           ...call(hook.call),
           key: hook.definition.key,
+          title: hook.definition.title,
           timeoutMs: hook.definition.timeoutMs,
         })),
       ]),

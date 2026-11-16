@@ -30,6 +30,7 @@ import {
 } from './execution-failure';
 import type { RunStore } from './run-store';
 import type { RunTree } from '@deploy-crab/contracts/session';
+import type { TargetSnapshot } from '@deploy-crab/contracts/execution-target';
 
 const PHASES: HookPhase[] = ['before', 'afterSuccess', 'finally'];
 const initialState = (): ExecutionState => ({
@@ -54,6 +55,7 @@ export interface SubmitOptions {
   parentRunId?: string;
   requestId?: string;
   requestHash?: string;
+  targetScope?: TargetSnapshot;
 }
 
 /**
@@ -136,6 +138,9 @@ export class ExecutionService {
       ...(options.parentRunId ? { parentRunId: options.parentRunId } : {}),
       ...(options.requestId ? { requestId: options.requestId } : {}),
       ...(options.requestHash ? { requestHash: options.requestHash } : {}),
+      ...(options.targetScope
+        ? { targetScope: structuredClone(options.targetScope) }
+        : {}),
       ...(plan.taskId ? { taskId: plan.taskId } : {}),
       ...(plan.taskRevision !== undefined
         ? { taskRevision: plan.taskRevision }
@@ -619,6 +624,7 @@ export class ExecutionService {
         ...initialState(),
         id: randomUUID(),
         key: hook.key,
+        ...(hook.title ? { title: hook.title } : {}),
         phase,
         action: hook.action,
       })),

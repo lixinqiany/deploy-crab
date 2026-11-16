@@ -241,8 +241,10 @@ export class PersistentRunStore extends RunStore {
         finishedAt,
         errors,
         targetName,
+        targetScope,
         taskRevision,
         dependsOn,
+        requestId,
       } = this.#live.get(snapshot.id) ?? snapshot;
       return {
         id,
@@ -253,7 +255,9 @@ export class PersistentRunStore extends RunStore {
         finishedAt,
         errors,
         dependsOn,
+        ...(requestId !== undefined ? { requestId } : {}),
         ...(targetName !== undefined ? { targetName } : {}),
+        ...(targetScope !== undefined ? { targetScope } : {}),
         ...(taskRevision !== undefined ? { taskRevision } : {}),
       };
     });

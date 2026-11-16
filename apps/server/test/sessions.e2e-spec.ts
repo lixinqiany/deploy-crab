@@ -7,6 +7,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import type { Cluster } from '@deploy-crab/contracts/cluster';
 import type { Task, CreateTaskBody } from '@deploy-crab/contracts/task';
 import type {
   Session,
@@ -159,6 +160,158 @@ describe('Session 执行 (e2e)', () => {
     return { child, parent, s, body };
   };
 
+  it('按集群分组派发并去重；成员变化后拒绝陈旧预览，历史快照与幂等重试保持原范围', async () => {
+    const { s, body } = await fixture();
+    const a = body.hostIds[0]!;
+    const b = await host('host-b');
+    const c = await host('host-c');
+    const cluster = (
+      await http()
+        .post('/clusters')
+        .send({
+          name: '测试集群',
+          members: [
+            { hostId: a, groups: ['app', 'infra'] },
+            { hostId: b, groups: ['app'] },
+            { hostId: c, groups: ['db'] },
+          ],
+        })
+        .expect(201)
+    ).body as Cluster;
+    const selection = {
+      kind: 'cluster' as const,
+      clusterId: cluster.id,
+      scope: { kind: 'groups' as const, groups: ['app', 'infra'] },
+    };
+    const requestBody = {
+      ...body,
+      hostIds: [a, b],
+      targetSelection: selection,
+    };
+    const draft = (
+      await http()
+        .patch(`/sessions/${s.id}`)
+        .send({
+          revision: 1,
+          draft: { hostIds: [a, b], targetSelection: selection },
+        })
+        .expect(200)
+    ).body as Session;
+    expect(draft.draft.targetSelection).toEqual(selection);
+    const submitted = await submit(s.id, requestBody);
+    expect(submitted).toHaveLength(2);
+    for (const run of submitted) {
+      expect((await finished(run.id)).run.targetScope).toEqual({
+        selection,
+        label: '测试集群 / app、infra',
+        hostIds: [a, b],
+      });
+    }
+    const all = await submit(s.id, {
+      ...body,
+      requestId: randomUUID(),
+      hostIds: [a, b, c],
+      targetSelection: { ...selection, scope: { kind: 'all' } },
+    });
+    expect(all).toHaveLength(3);
+    for (const run of all) await finished(run.id);
+    const specified = await submit(s.id, {
+      ...body,
+      requestId: randomUUID(),
+      hostIds: [b],
+      targetSelection: { ...selection, scope: { kind: 'hosts', hostIds: [b] } },
+    });
+    expect(specified).toHaveLength(1);
+    await finished(specified[0]!.id);
+    const count = calls.length;
+    await http()
+      .patch(`/clusters/${cluster.id}`)
+      .send({
+        name: '改名后的集群',
+        members: [
+          { hostId: a, groups: ['app', 'infra'] },
+          { hostId: c, groups: ['app'] },
+        ],
+      })
+      .expect(200);
+    await http()
+      .post(`/sessions/${s.id}/runs`)
+      .send({ ...requestBody, requestId: randomUUID() })
+      .expect(409);
+    expect((await submit(s.id, requestBody)).map((run) => run.id)).toEqual(
+      submitted.map((run) => run.id),
+    );
+    expect(calls).toHaveLength(count);
+    await app.close();
+    await boot();
+    const history = (await http().get(`/sessions/${s.id}/runs`).expect(200))
+      .body as SessionRunPage;
+    const original = history.items.filter(
+      (run) => run.requestId === body.requestId,
+    );
+    expect(original).toHaveLength(2);
+    expect(
+      original.every(
+        (run) => run.targetScope?.label === '测试集群 / app、infra',
+      ),
+    ).toBe(true);
+    expect(original[0]?.targetScope?.hostIds).toEqual([a, b]);
+  });
+
+  it('拒绝集群外主机、空范围和伪造预览，不产生部分执行', async () => {
+    const { s, body } = await fixture();
+    const outside = await host('outside');
+    const cluster = (
+      await http()
+        .post('/clusters')
+        .send({
+          name: '目标集群',
+          members: [{ hostId: body.hostIds[0], groups: ['app'] }],
+        })
+        .expect(201)
+    ).body as Cluster;
+    await http()
+      .post(`/sessions/${s.id}/runs`)
+      .send({
+        ...body,
+        hostIds: [outside],
+        targetSelection: {
+          kind: 'cluster',
+          clusterId: cluster.id,
+          scope: { kind: 'hosts', hostIds: [outside] },
+        },
+      })
+      .expect(400);
+    await http()
+      .post(`/sessions/${s.id}/runs`)
+      .send({
+        ...body,
+        targetSelection: {
+          kind: 'cluster',
+          clusterId: cluster.id,
+          scope: { kind: 'groups', groups: [] },
+        },
+      })
+      .expect(400);
+    await http()
+      .post(`/sessions/${s.id}/runs`)
+      .send({
+        ...body,
+        hostIds: [outside],
+        targetSelection: {
+          kind: 'cluster',
+          clusterId: cluster.id,
+          scope: { kind: 'all' },
+        },
+      })
+      .expect(409);
+    expect(calls).toHaveLength(0);
+    expect(
+      ((await http().get(`/sessions/${s.id}/runs`)).body as SessionRunPage)
+        .items,
+    ).toEqual([]);
+  });
+
   it('手动标题与配置持久化；多主机调用、绑定、依赖、钩子和输出跑通，重复请求不再执行', async () => {
     const { s, body } = await fixture();
     body.hostIds.push(await host('host-b'));
@@ -232,6 +385,8 @@ describe('Session 执行 (e2e)', () => {
     ).body as SessionRunPage;
     expect(next.items).toHaveLength(1);
     expect(next.items[0]?.id).not.toBe(history.items[0]?.id);
+    expect(history.items[0]?.requestId).toBe(body.requestId);
+    expect(next.items[0]?.requestId).toBe(body.requestId);
     expect((await finished(submitted[0]!.id)).run.status).toBe('succeeded');
     expect(calls).toHaveLength(6);
   });

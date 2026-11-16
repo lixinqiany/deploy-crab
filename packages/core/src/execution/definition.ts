@@ -42,6 +42,7 @@ export interface ActionCall {
 
 export interface HookDefinition extends ActionCall {
   key: string;
+  title?: string;
 }
 export type Hooks = Partial<Record<HookPhase, HookDefinition[]>>;
 

@@ -1,4 +1,5 @@
 import type { TaskInput } from './task-input';
+import type { TargetSnapshot } from './execution-target';
 
 /** 临时连接检查使用内存，Session 的执行记录持久化。 */
 export type ExecutionStatus =
@@ -31,6 +32,7 @@ export interface ExecutionState {
 }
 
 export interface HookExecution extends ExecutionState {
+  title?: string;
   childRunId?: string;
   id: string;
   key: string;
@@ -72,6 +74,7 @@ export interface Run extends ExecutionState {
   taskId?: string;
   taskRevision?: number;
   targetName?: string;
+  targetScope?: TargetSnapshot;
   skippedSteps?: string[];
   createdAt: string;
   dependsOn: string[];

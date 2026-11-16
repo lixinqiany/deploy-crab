@@ -4,140 +4,254 @@ import {
   type HookExecution,
   type ExecutionError,
 } from '@deploy-crab/contracts/execution';
-import type { RunTree } from '@deploy-crab/contracts/session';
+import type {
+  RunTree,
+  SessionRunSummary,
+} from '@deploy-crab/contracts/session';
 import { TASK_HOOK_LABELS } from '@deploy-crab/contracts/task';
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+  LoadingOutlined,
+  MinusCircleOutlined,
+  ClockCircleOutlined,
+  RightOutlined,
+  StopOutlined,
+} from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Checkbox, Skeleton, Tag } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Skeleton, Tooltip } from 'antd';
+import { useMemo, useState, type ReactNode } from 'react';
+import { ExecutionOutput } from './ExecutionOutput';
+import { indexRunOutput } from './execution-output-model';
 import { sessionsApi } from '@/api/sessions';
 import { runsApi } from '@/api/runs';
+import { statusLabels, statusTone } from './execution-feed-model';
+import styles from './SessionWorkspace.module.css';
 
-const statusLabels: Record<ExecutionStatus, string> = {
-  queued: '排队中',
-  running: '执行中',
-  succeeded: '成功',
-  failed: '失败',
-  blocked: '前置失败',
-  cancelled: '已取消',
-  interrupted: '已中断',
-  skipped: '已跳过',
-};
 const errorMessages = (errors: ExecutionError[]) => [
   ...new Set(errors.map((error) => error.message)),
 ];
+
 export const RunStatus = ({ status }: { status: ExecutionStatus }) => (
-  <Tag
-    color={
-      status === 'succeeded'
-        ? 'success'
-        : status === 'failed' || status === 'interrupted'
-          ? 'error'
-          : status === 'running'
-            ? 'processing'
-            : status === 'blocked'
-              ? 'warning'
-              : 'default'
-    }
-  >
-    {statusLabels[status]}
-  </Tag>
+  <span className={styles.status}>
+    <span
+      aria-hidden="true"
+      className={`${styles.lights} ${status === 'running' ? styles.pulse : ''}`}
+      data-tone={statusTone(status)}
+    >
+      <i className={styles.bulb} />
+      <i className={styles.bulb} />
+      <i className={styles.bulb} />
+    </span>
+    <span>{statusLabels[status]}</span>
+  </span>
 );
 
-const LifecycleTree = ({ tree }: { tree: RunTree }) => {
-  const { run, children } = tree;
-  const child = (id?: string) => children.find((item) => item.run.id === id);
-  const hooks = (items: HookExecution[]) =>
-    items.map((hook) => {
-      const nested = child(hook.childRunId);
-      return (
-        <div key={hook.id} className="ml-3 mt-1 text-xs text-sand-11">
-          <RunStatus status={hook.status} />
-          {TASK_HOOK_LABELS[hook.phase]} · {hook.key}
-          {errorMessages(hook.errors).map((message) => (
-            <p key={message} className="text-red-600">
+const StepMarker = ({ status }: { status: ExecutionStatus }) => (
+  <span
+    aria-hidden="true"
+    className={styles.stepDot}
+    data-tone={statusTone(status)}
+  >
+    {status === 'running' ? (
+      <LoadingOutlined />
+    ) : status === 'succeeded' ? (
+      <CheckCircleFilled />
+    ) : statusTone(status) === 'red' ? (
+      <CloseCircleFilled />
+    ) : status === 'queued' ? (
+      <ClockCircleOutlined />
+    ) : (
+      <MinusCircleOutlined />
+    )}
+  </span>
+);
+
+const TimelineItem = ({
+  id,
+  status,
+  title,
+  errors,
+  children,
+  detailLabel = '查看输出',
+}: {
+  id: string;
+  status: ExecutionStatus;
+  title: string;
+  errors: ExecutionError[];
+  children: ReactNode;
+  detailLabel?: string;
+}) => {
+  const [expanded, setExpanded] = useState<boolean | null>(null);
+  const open =
+    expanded ?? (status === 'running' || statusTone(status) === 'red');
+  return (
+    <div className={styles.step}>
+      <StepMarker status={status} />
+      <button
+        type="button"
+        className={styles.stepToggle}
+        aria-label={`${open ? '收起' : '展开'}步骤 ${title}`}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setExpanded(!open)}
+      >
+        <span className={styles.stepTitle}>{title}</span>
+        <span className={styles.stepAction}>
+          {open ? '收起详情' : detailLabel}
+        </span>
+        <span className={styles.stepState}>{statusLabels[status]}</span>
+        <RightOutlined
+          className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+        />
+      </button>
+      {open && (
+        <div id={id} className={styles.stepBody}>
+          {errorMessages(errors).map((message) => (
+            <p key={message} className={styles.stepError}>
               {message}
             </p>
           ))}
-          {nested && <LifecycleTree tree={nested} />}
+          {children}
         </div>
-      );
-    });
-  return (
-    <div className="space-y-2">
-      {hooks(run.hooks.filter((hook) => hook.phase === 'before'))}
-      {run.steps.map((step) => {
-        const nested = child(step.childRunId);
-        return (
-          <div key={step.id} className="rounded-lg border border-sand-4 p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <RunStatus status={step.status} />
-              <span className="text-sm">{step.title}</span>
-              {step.status === 'running' && (
-                <span className="text-xs text-sand-9">
-                  {step.phase === 'body'
-                    ? '执行主体'
-                    : step.phase === 'finished'
-                      ? ''
-                      : TASK_HOOK_LABELS[step.phase]}
-                </span>
-              )}
-            </div>
-            {errorMessages(step.errors).map((message) => (
-              <p key={message} className="my-1 break-all text-xs text-red-600">
-                {message}
-              </p>
-            ))}
-            {!!step.hooks.length && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-sand-9">
-                  步骤钩子 · {step.hooks.length}
-                </summary>
-                {hooks(step.hooks)}
-              </details>
-            )}
-            {nested && (
-              <details
-                className="mt-2"
-                open={
-                  !isExecutionFinished(nested.run.status) ||
-                  nested.run.status !== 'succeeded'
-                }
-              >
-                <summary className="cursor-pointer text-xs text-sand-11">
-                  {nested.run.task} · v{nested.run.taskRevision}
-                </summary>
-                <div className="mt-2 border-l-2 border-sand-4 pl-3">
-                  <LifecycleTree tree={nested} />
-                </div>
-              </details>
-            )}
-          </div>
-        );
-      })}
-      {hooks(run.hooks.filter((hook) => hook.phase !== 'before'))}
+      )}
     </div>
   );
 };
 
-const flatten = (tree: RunTree): RunTree['run'][] => [
-  tree.run,
-  ...tree.children.flatMap(flatten),
-];
+const LifecycleTree = ({ tree }: { tree: RunTree }) => {
+  const { run, children } = tree;
+  const output = useMemo(() => indexRunOutput(run), [run]);
+  const child = (id?: string) => children.find((item) => item.run.id === id);
+  const hooks = (items: HookExecution[]) =>
+    items.map((hook) => {
+      const nested = child(hook.childRunId);
+      const title = `${TASK_HOOK_LABELS[hook.phase]} · ${hook.title ?? hook.key}`;
+      const entries = output.hooks.get(hook.id) ?? [];
+      return (
+        <TimelineItem
+          key={hook.id}
+          id={`hook-${hook.id}`}
+          status={hook.status}
+          title={title}
+          errors={hook.errors}
+          detailLabel={nested ? '查看子任务' : '查看输出'}
+        >
+          {(!nested || entries.length > 0) && (
+            <ExecutionOutput
+              output={entries}
+              status={hook.status}
+              title={title}
+              truncated={run.outputTruncated}
+              heading="钩子输出"
+            />
+          )}
+          {nested && <LifecycleTree tree={nested} />}
+        </TimelineItem>
+      );
+    });
+  return (
+    <div className={styles.timeline}>
+      {hooks(run.hooks.filter((hook) => hook.phase === 'before'))}
+      {run.steps.map((step) => {
+        const nested = child(step.childRunId);
+        const entries = output.steps.get(step.id) ?? [];
+        return (
+          <TimelineItem
+            key={step.id}
+            id={`step-${run.id}-${step.id}`}
+            status={step.status}
+            title={step.title}
+            errors={step.errors}
+            detailLabel={
+              nested
+                ? '查看子任务'
+                : step.status === 'skipped'
+                  ? '查看详情'
+                  : '查看输出'
+            }
+          >
+            {step.status === 'running' &&
+              step.phase !== 'body' &&
+              step.phase !== 'finished' && (
+                <div className={styles.runFootnote}>
+                  {TASK_HOOK_LABELS[step.phase]}
+                </div>
+              )}
+            {step.hooks.some((hook) => hook.phase === 'before') && (
+              <div className={styles.timeline}>
+                {hooks(step.hooks.filter((hook) => hook.phase === 'before'))}
+              </div>
+            )}
+            {(!nested || entries.length > 0) && (
+              <ExecutionOutput
+                output={entries}
+                status={step.status}
+                title={step.title}
+                truncated={run.outputTruncated}
+              />
+            )}
+            {nested && (
+              <div className={styles.nestedTask}>
+                <div className={styles.nestedTaskTitle}>
+                  {nested.run.task}
+                  {nested.run.taskRevision
+                    ? ` · v${nested.run.taskRevision}`
+                    : ''}
+                </div>
+                <LifecycleTree tree={nested} />
+              </div>
+            )}
+            {step.hooks.some((hook) => hook.phase !== 'before') && (
+              <div className={styles.timeline}>
+                {hooks(step.hooks.filter((hook) => hook.phase !== 'before'))}
+              </div>
+            )}
+          </TimelineItem>
+        );
+      })}
+      {hooks(run.hooks.filter((hook) => hook.phase !== 'before'))}
+      {!!output.task.length && (
+        <ExecutionOutput
+          output={output.task}
+          status={run.status}
+          title={`${run.task}任务级`}
+          truncated={run.outputTruncated}
+          heading="任务级输出"
+        />
+      )}
+      {run.outputTruncated && (
+        <p className={styles.runFootnote}>
+          此任务较早的输出已截断，各步骤显示当前保留的内容。
+        </p>
+      )}
+    </div>
+  );
+};
+
 export const RunDetail = ({
-  id,
+  summary,
   sessionId,
+  initiallyOpen = false,
 }: {
-  id: string;
+  summary: SessionRunSummary;
   sessionId: string;
+  initiallyOpen?: boolean;
 }) => {
+  const id = summary.id;
   const cache = useQueryClient();
+  const [open, setOpen] = useState(initiallyOpen);
   const query = useQuery({
     queryKey: ['run-tree', id],
     queryFn: () => sessionsApi.tree(id),
+    enabled: (query) =>
+      open ||
+      !isExecutionFinished(summary.status) ||
+      (!!query.state.data && !isExecutionFinished(query.state.data.run.status)),
     refetchInterval: (query) =>
       query.state.data && isExecutionFinished(query.state.data.run.status)
         ? false
-        : 750,
+        : 1000,
     retry: false,
   });
   const cancel = useMutation({
@@ -147,107 +261,141 @@ export const RunDetail = ({
       await cache.invalidateQueries({ queryKey: ['session-runs', sessionId] });
     },
   });
-  const [follow, setFollow] = useState(true);
-  const outputRef = useRef<HTMLPreElement>(null);
   const tree = query.data;
-  const allRuns = tree ? flatten(tree) : [];
-  const output = allRuns
-    .flatMap((run) =>
-      run.output.map((item) => ({
-        ...item,
-        runId: run.id,
-        title: `${run.task}${item.stepId ? ` / ${run.steps.find((step) => step.id === item.stepId)?.title ?? item.stepId}` : ''}${item.hookId ? ' / 钩子' : ''}`,
-      })),
-    )
-    .sort((a, b) => a.sequence - b.sequence);
-  const outputVersion = output
-    .map((item) => `${item.runId}:${item.sequence}`)
-    .join(',');
-  useEffect(() => {
-    if (follow && outputRef.current)
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
-  }, [follow, outputVersion]);
-  if (!tree)
-    return query.error ? (
-      <Alert
-        type="error"
-        title={query.error.message}
-        action={<Button onClick={() => void query.refetch()}>重试</Button>}
-      />
-    ) : (
-      <Skeleton active />
-    );
+  const run = tree?.run ?? summary;
+  const finished = isExecutionFinished(run.status);
+  const completedSteps =
+    tree?.run.steps.filter((step) => isExecutionFinished(step.status)).length ??
+    0;
+  const activeStep = tree?.run.steps.find((step) => step.status === 'running');
+  const succeededSteps =
+    tree?.run.steps.filter((step) => step.status === 'succeeded').length ?? 0;
+  const skippedSteps =
+    tree?.run.steps.filter((step) => step.status === 'skipped').length ?? 0;
+  const progress =
+    run.status === 'succeeded'
+      ? [
+          succeededSteps ? `${succeededSteps} 步完成` : '',
+          skippedSteps ? `${skippedSteps} 步跳过` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : `${completedSteps} / ${tree?.run.steps.length ?? 0} 步已结束`;
+  const detailId = `run-details-${id}`;
   return (
     <section
-      aria-label="执行详情"
-      className="rounded-xl border border-sand-4 bg-sand-1 p-4"
+      aria-label={`执行 ${summary.targetName ?? summary.task}`}
+      className={styles.run}
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <span className="mr-2 font-medium">{tree.run.task}</span>
-          <RunStatus status={tree.run.status} />
-          <p className="mb-0 mt-1 text-xs text-sand-9">
-            {tree.run.targetName} · 任务版本 {tree.run.taskRevision} ·{' '}
-            {new Date(tree.run.createdAt).toLocaleString()}
-          </p>
-        </div>
-        {!isExecutionFinished(tree.run.status) && (
-          <Button
-            danger
-            loading={cancel.isPending}
-            onClick={() => cancel.mutate()}
-          >
-            取消执行
-          </Button>
+      <div className={styles.runHeader}>
+        <button
+          type="button"
+          className={styles.runToggle}
+          aria-label={`${open ? '收起' : '展开'}执行 ${summary.targetName ?? summary.task}`}
+          aria-expanded={open}
+          aria-controls={detailId}
+          onClick={() => setOpen(!open)}
+        >
+          <RightOutlined
+            className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+          />
+          <div className={styles.runHost}>
+            <span>{run.task}</span>
+            <span className={styles.runMeta}>
+              {run.targetName ?? '目标主机'} ·{' '}
+              {activeStep
+                ? activeStep.title
+                : run.status === 'queued'
+                  ? run.dependsOn.length
+                    ? '等待前置执行成功'
+                    : '等待调度'
+                  : tree
+                    ? progress
+                    : `任务版本 ${run.taskRevision ?? '—'}`}
+            </span>
+          </div>
+          <RunStatus status={run.status} />
+        </button>
+        {!finished && (
+          <Tooltip title="停止此主机的执行">
+            <Button
+              type="text"
+              size="small"
+              danger
+              aria-label={`停止执行 ${run.targetName ?? run.task}`}
+              icon={<StopOutlined />}
+              loading={cancel.isPending}
+              onClick={() => cancel.mutate()}
+            />
+          </Tooltip>
         )}
       </div>
-      {(query.error || cancel.error) && (
-        <Alert
-          className="mb-3"
-          type="error"
-          title={(query.error ?? cancel.error)?.message}
-        />
+      {cancel.error && !open && (
+        <Alert type="error" title={cancel.error.message} />
       )}
-      {errorMessages(tree.run.errors).map((message) => (
-        <Alert
-          key={message}
-          className="mb-3"
-          type={tree.run.status === 'cancelled' ? 'warning' : 'error'}
-          title={message}
-        />
-      ))}
-      <LifecycleTree tree={tree} />
-      <div className="mb-2 mt-5 flex items-center justify-between">
-        <span className="text-sm font-medium">执行输出</span>
-        <Checkbox
-          checked={follow}
-          onChange={(event) => setFollow(event.target.checked)}
-        >
-          跟随最新输出
-        </Checkbox>
-      </div>
-      {allRuns.some((run) => run.outputTruncated) && (
-        <p className="text-xs text-amber-text">
-          输出较多，已保留各任务最近的输出（最多 256 Ki 字符）；较早内容已截断。
-        </p>
+      {open && (
+        <div className={styles.runContent} id={detailId}>
+          {(query.error || cancel.error) && (
+            <Alert
+              className="mt-3"
+              type="error"
+              title={(query.error ?? cancel.error)?.message}
+              action={
+                query.error ? (
+                  <Button size="small" onClick={() => void query.refetch()}>
+                    重试
+                  </Button>
+                ) : undefined
+              }
+            />
+          )}
+          {!tree && !query.error ? (
+            <Skeleton
+              active
+              paragraph={{ rows: 2 }}
+              title={false}
+              className="mt-4"
+            />
+          ) : (
+            <>
+              {errorMessages(run.errors)
+                .filter(
+                  (message) =>
+                    !tree?.run.steps.some((step) =>
+                      step.errors.some((error) =>
+                        message.includes(error.message),
+                      ),
+                    ),
+                )
+                .map((message) => (
+                  <p key={message} className={styles.runNotice}>
+                    {message}
+                  </p>
+                ))}
+              {run.status === 'queued' && (
+                <p className={styles.runInfo}>
+                  {run.dependsOn.length
+                    ? '前置执行全部成功后，将自动开始。'
+                    : '任务已提交，等待执行。'}
+                </p>
+              )}
+              {run.targetScope && (
+                <p className={styles.runInfo}>
+                  执行范围：{run.targetScope.label}
+                </p>
+              )}
+              {tree && <LifecycleTree tree={tree} />}
+              <div className={styles.runFootnote}>
+                任务 v{run.taskRevision ?? '—'} ·{' '}
+                {new Date(run.createdAt).toLocaleString()}
+                {run.finishedAt
+                  ? ` · 结束于 ${new Date(run.finishedAt).toLocaleTimeString()}`
+                  : ''}
+              </div>
+            </>
+          )}
+        </div>
       )}
-      <pre
-        ref={outputRef}
-        aria-label="执行日志"
-        className="m-0 max-h-96 min-h-24 overflow-auto rounded-lg bg-sand-12 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all text-sand-3"
-      >
-        {output.length
-          ? output.map((item) => (
-              <span
-                key={`${item.runId}:${item.sequence}`}
-                className={`block ${item.stream === 'stderr' ? 'text-orange-300' : ''}`}
-              >
-                <span className="text-sand-8">[{item.title}] </span>
-                {item.text}
-              </span>
-            ))
-          : '等待任务输出…'}
-      </pre>
     </section>
   );
 };

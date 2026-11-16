@@ -17,6 +17,7 @@ interface Props {
   value: string;
   onChange: (taskId: string) => void;
   ariaLabel?: string;
+  disabled?: boolean;
 }
 
 /** 一个选择入口：直接搜索所有任务，或进入标签目录再选任务。 */
@@ -25,6 +26,7 @@ export const TaskReferenceSelect = ({
   value,
   onChange,
   ariaLabel = '选择引用任务',
+  disabled = false,
 }: Props) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -37,7 +39,7 @@ export const TaskReferenceSelect = ({
   );
   return (
     <Popover
-      open={open}
+      open={open && !disabled}
       trigger="click"
       placement="bottomLeft"
       arrow={false}
@@ -185,6 +187,7 @@ export const TaskReferenceSelect = ({
     >
       <Button
         block
+        disabled={disabled}
         aria-label={ariaLabel}
         className="flex items-center justify-between text-left"
         onKeyDown={(event) => {

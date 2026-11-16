@@ -14,6 +14,8 @@ import type { Database } from '../database/database';
 import { sessions } from '../database/tables/sessions';
 import { TaskRepository } from '../tasks/task-repository';
 import { HostRepository } from '../inventory/host-repository';
+import { ClusterRepository } from '../inventory/cluster-repository';
+import { resolveTargetSelection } from '@deploy-crab/contracts/execution-target';
 import {
   ConflictError,
   NotFoundError,
@@ -130,22 +132,54 @@ export class SessionService {
             '任务或引用任务已修改，请刷新任务定义、检查配置后重新执行',
           );
       const hosts = new HostRepository(tx);
-      return request.hostIds.map((hostId) => {
+      const availableHosts = hosts.list();
+      const availableIds = new Set(availableHosts.map((host) => host.id));
+      if (request.hostIds.some((id) => !availableIds.has(id)))
+        throw new NotFoundError('选择的主机已不存在');
+      let targetScope;
+      try {
+        targetScope = resolveTargetSelection(
+          request.targetSelection ?? {
+            kind: 'hosts',
+            hostIds: request.hostIds,
+          },
+          request.targetSelection?.kind === 'cluster'
+            ? new ClusterRepository(tx).list()
+            : [],
+          availableHosts,
+        );
+      } catch (error) {
+        throw new ValidationError(
+          error instanceof Error ? error.message : '执行目标无效',
+          [],
+        );
+      }
+      if (
+        targetScope.hostIds.length !== request.hostIds.length ||
+        targetScope.hostIds.some((hostId) => !request.hostIds.includes(hostId))
+      )
+        throw new ConflictError(
+          '集群成员或分组已变化，请重新选择执行目标，核对主机名单后再提交',
+        );
+      return targetScope.hostIds.map((hostId) => {
         const host = hosts.get(hostId);
         if (!host) throw new NotFoundError('选择的主机已不存在');
         const target = new ConnectionResolver(this.database).resolve(
           CheckHostInput.parse({ ...host, hostId }),
         );
-        return compileStoredTask(
-          configuration.configured,
-          target,
-          host.name,
-          request.input,
-        );
+        return {
+          ...compileStoredTask(
+            configuration.configured,
+            target,
+            host.name,
+            request.input,
+          ),
+          targetScope,
+        };
       });
     });
     const result = this.execution.submitBatch(
-      compiled.map(({ plan, input }) => ({
+      compiled.map(({ plan, input, targetScope }) => ({
         definition: plan,
         options: {
           input,
@@ -154,6 +188,7 @@ export class SessionService {
           requestId: request.requestId,
           requestHash,
           dependsOn: request.dependsOn,
+          targetScope,
         },
       })),
     );

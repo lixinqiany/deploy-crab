@@ -1,0 +1,659 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-sand-1);
+  color: var(--color-sand-12);
+}
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 66px;
+  padding: 12px 28px;
+}
+.heading {
+  min-width: 0;
+}
+.heading h1 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+}
+.heading p {
+  margin: 3px 0 0;
+  color: var(--color-sand-9);
+  font-size: 11px;
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.connection {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-sand-11);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.connectionDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-sand-9);
+}
+.scrollArea {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+}
+.transcript {
+  width: min(100%, 840px);
+  margin: 0 auto;
+  padding: 20px 28px 24px;
+  overflow-anchor: none;
+}
+.empty {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 28px 64px;
+  text-align: center;
+}
+.emptyMark {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 24px;
+  border: 1px solid var(--color-sand-4);
+  border-radius: 24px;
+  background: linear-gradient(145deg, #fff, #f6f3ec);
+  color: #6b4b32;
+  box-shadow: 0 6px 20px #4f342208;
+}
+.empty h2 {
+  margin: 0 0 12px;
+  font-size: clamp(23px, 3vw, 30px);
+  font-weight: 550;
+  letter-spacing: -0.8px;
+}
+.empty p {
+  margin: 0;
+  max-width: 400px;
+  color: var(--color-sand-9);
+  font-size: 13px;
+  line-height: 1.9;
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 620px;
+  margin-top: 28px;
+}
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 240px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-sand-4);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-sand-11);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 160ms,
+    border-color 160ms;
+}
+.suggestion span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggestion:hover {
+  background: var(--color-sand-2);
+  border-color: var(--color-sand-6);
+}
+.turn {
+  margin-bottom: 32px;
+}
+.userRow {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 26px 44px;
+}
+.userBubble {
+  max-width: 88%;
+  padding: 14px 18px;
+  border-radius: 20px 20px 5px 20px;
+  background: #f0efeb;
+}
+.userTitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.userMeta {
+  margin-top: 7px;
+  font-size: 13px;
+  color: var(--color-sand-11);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.userTime {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-sand-9);
+  font-size: 12px;
+}
+.agentHeading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-sand-4);
+  border-radius: 10px;
+  color: #6b4b32;
+  background: #faf8f3;
+}
+.agentLabel {
+  margin-left: 2px;
+  color: var(--color-sand-9);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 1px;
+}
+.agentBody {
+  margin-left: 40px;
+}
+.run {
+  margin-bottom: 12px;
+  border: 1px solid var(--color-sand-4);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--color-sand-1);
+}
+.runHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 0;
+}
+.runToggle {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 0;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+.runToggle:hover {
+  background: var(--color-sand-2);
+}
+.runHost {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.runHost > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.runMeta {
+  color: var(--color-sand-9);
+  font-size: 13px;
+  font-weight: 400;
+}
+.chevron {
+  color: var(--color-sand-9);
+  font-size: 10px;
+  transition: transform 150ms;
+}
+.chevronOpen {
+  transform: rotate(90deg);
+}
+.status {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-sand-11);
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.lights {
+  display: inline-flex;
+  gap: 4px;
+  padding: 5px 6px;
+  border: 1px solid #e7e7e2;
+  border-radius: 20px;
+  background: #f3f3ef;
+}
+.bulb {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d9dad3;
+}
+.lights[data-tone='red'] .bulb:nth-child(1) {
+  background: #e05d56;
+  box-shadow: 0 0 5px #e05d5640;
+}
+.lights[data-tone='amber'] .bulb:nth-child(2) {
+  background: #dca234;
+  box-shadow: 0 0 5px #dca23450;
+}
+.lights[data-tone='green'] .bulb:nth-child(3) {
+  background: #40a57a;
+  box-shadow: 0 0 5px #40a57a40;
+}
+.pulse {
+  animation: breathe 1.8s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.5;
+  }
+}
+.runContent {
+  padding: 2px 16px 14px;
+  border-top: 1px solid var(--color-sand-3);
+}
+.timeline {
+  margin: 12px 0;
+}
+.step {
+  position: relative;
+  padding: 0 0 16px 23px;
+  border-left: 1px solid var(--color-sand-4);
+  margin-left: 5px;
+}
+.step:last-child {
+  padding-bottom: 0;
+  border-color: transparent;
+}
+.stepDot {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  left: -7px;
+  top: 9px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--color-sand-1);
+  color: var(--color-sand-9);
+  font-size: 11px;
+}
+.stepDot[data-tone='green'] {
+  color: #339369;
+}
+.stepDot[data-tone='red'] {
+  color: #d25950;
+}
+.stepDot[data-tone='amber'] {
+  color: #c28b24;
+}
+.stepTitle {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.stepState {
+  flex-shrink: 0;
+  color: var(--color-sand-9);
+  font-size: 13px;
+}
+.stepError {
+  margin: 6px 0;
+  color: #bd5149;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.runNotice {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fcf2ee;
+  color: #a95242;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.runInfo {
+  margin: 12px 0;
+  color: var(--color-sand-9);
+  font-size: 13px;
+}
+.terminal {
+  margin-top: 10px;
+  overflow: hidden;
+  border: 1px solid #e7e7e2;
+  border-radius: 9px;
+  background: #f7f7f4;
+}
+.terminalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  color: var(--color-sand-11);
+  font-size: 13px;
+}
+.terminalHeader button {
+  border: 0;
+  padding: 3px 0 3px 8px;
+  background: none;
+  color: var(--color-sand-9);
+  font-size: 12px;
+  cursor: pointer;
+}
+.terminalOutput {
+  margin: 0;
+  max-height: 220px;
+  min-height: 45px;
+  overflow: auto;
+  padding: 4px 12px 12px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #52554e;
+  scrollbar-width: thin;
+}
+.terminalExpanded {
+  max-height: 380px;
+}
+.stderr {
+  color: #b4603e;
+}
+.runFootnote {
+  margin-top: 10px;
+  color: var(--color-sand-9);
+  font-size: 12px;
+}
+.composerDock {
+  position: relative;
+  flex-shrink: 0;
+  width: min(100%, 840px);
+  margin: 0 auto;
+  padding: 4px 28px 16px;
+  background: var(--color-sand-1);
+}
+.composer {
+  padding: 16px 18px 12px;
+  border: 1px solid #dfded7;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow:
+    0 5px 22px #34301e06,
+    0 1px 3px #34301e04;
+  transition:
+    border-color 180ms,
+    box-shadow 180ms;
+}
+.composer:focus-within {
+  border-color: #c9c5b8;
+  box-shadow: 0 4px 20px #34301e0b;
+}
+.taskLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.taskSymbol {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--color-sand-3);
+  color: var(--color-sand-11);
+}
+.taskSelect {
+  min-width: 0;
+  flex: 1;
+}
+.taskSelect > button {
+  height: 34px;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+}
+.taskDescription {
+  margin: 8px 0 12px 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-sand-9);
+  font-size: 12px;
+}
+.composerToolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.toolButton:global(.ant-btn) {
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--color-sand-11);
+  font-size: 12px;
+}
+.toolButton:global(.ant-btn):hover {
+  background: var(--color-sand-3);
+}
+.toolbarSpacer {
+  flex: 1;
+}
+.sendButton:global(.ant-btn) {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border: 0;
+  background: #2e3029;
+  color: #fff;
+  box-shadow: none;
+}
+.sendButton:global(.ant-btn):not(:disabled):hover {
+  background: #45473d;
+  color: #fff;
+}
+.sendButton:global(.ant-btn):disabled {
+  background: #efefeb;
+  color: #b3b5ac;
+}
+.composerHint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 25px;
+  padding: 9px 8px 0;
+  color: var(--color-sand-9);
+  font-size: 11px;
+  text-align: center;
+}
+.hintAction {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: inherit;
+  color: var(--color-sand-11);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.jumpButton:global(.ant-btn) {
+  position: absolute;
+  top: -44px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-color: var(--color-sand-4);
+  border-radius: 20px;
+  background: var(--color-sand-1);
+  box-shadow: 0 3px 12px #00000008;
+  font-size: 12px;
+}
+.drawerIntro {
+  margin: 0 0 20px;
+  color: var(--color-sand-9);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.drawerTask {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+:where(.workspace) button:focus-visible {
+  outline: 2px solid #c48b36;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .header {
+    padding: 12px 18px;
+    min-height: 60px;
+  }
+  .connection {
+    display: none;
+  }
+  .transcript {
+    padding: 16px 16px 20px;
+  }
+  .composerDock {
+    padding: 4px 14px 10px;
+  }
+  .composer {
+    padding: 12px;
+    border-radius: 18px;
+  }
+  .agentBody {
+    margin-left: 0;
+  }
+  .userBubble {
+    max-width: 100%;
+  }
+  .runToggle {
+    padding: 11px 10px;
+    gap: 7px;
+  }
+  .runContent {
+    padding: 2px 12px 12px;
+  }
+  .taskDescription {
+    margin-left: 0;
+  }
+  .agentLabel {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+
+.stepToggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% + 8px);
+  margin: -2px -4px;
+  padding: 5px 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-sand-12);
+  font-size: 15px;
+  line-height: 1.6;
+  text-align: left;
+  cursor: pointer;
+}
+.stepToggle:hover {
+  background: var(--color-sand-2);
+}
+.stepTitle {
+  min-width: 0;
+}
+.stepAction {
+  flex-shrink: 0;
+  color: var(--color-sand-11);
+  font-size: 12px;
+}
+.stepState {
+  min-width: 52px;
+  text-align: right;
+}
+.stepBody {
+  padding: 3px 0 2px;
+}
+.nestedTask {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-sand-4);
+  border-radius: 10px;
+}
+.nestedTaskTitle {
+  color: var(--color-sand-11);
+  font-size: 13px;
+  font-weight: 500;
+}
+@media (max-width: 760px) {
+  .stepToggle {
+    gap: 8px;
+    font-size: 14px;
+  }
+  .stepAction {
+    display: none;
+  }
+  .nestedTask {
+    padding: 10px;
+  }
+}
