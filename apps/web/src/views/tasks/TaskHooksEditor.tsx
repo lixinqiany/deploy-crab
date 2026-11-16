@@ -9,14 +9,27 @@ import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Collapse, Form, Input, InputNumber } from 'antd';
 import { TaskCallEditor } from './TaskCallEditor';
 import { newCall, nodeKey } from './task-editor-model';
+import type { InputDraft } from './task-input-model';
+import type { TaskParameter } from '@deploy-crab/contracts/task-input';
 
 interface Props {
   hooks: TaskHooks;
   onChange: (hooks: TaskHooks) => void;
   tasks: Task[];
   catalog: TaskCatalog;
+  path: string;
+  inputDraft: (path: string) => InputDraft;
+  parameters: TaskParameter[];
 }
-export const TaskHooksEditor = ({ hooks, onChange, tasks, catalog }: Props) => (
+export const TaskHooksEditor = ({
+  hooks,
+  onChange,
+  tasks,
+  catalog,
+  path,
+  inputDraft,
+  parameters,
+}: Props) => (
   <Collapse
     size="small"
     items={TASK_HOOK_PHASES.map((phase) => ({
@@ -60,6 +73,8 @@ export const TaskHooksEditor = ({ hooks, onChange, tasks, catalog }: Props) => (
                   onChange={(call) => update({ ...hook, call })}
                   tasks={tasks}
                   catalog={catalog}
+                  inputDraft={inputDraft(`${path}.${phase}.${hook.key}`)}
+                  parameters={parameters}
                 />
                 <Form.Item label="钩子超时（秒）" className="mb-0">
                   <InputNumber

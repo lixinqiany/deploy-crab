@@ -2,6 +2,10 @@ import type { Task, TaskCall, TaskCatalog } from '@deploy-crab/contracts/task';
 import { Form, Input, Segmented, Select } from 'antd';
 import { callKind, newCall, type CallKind } from './task-editor-model';
 import { TaskReferenceSelect } from './TaskReferenceSelect';
+import { TaskInputEditor } from './TaskInputEditor';
+import type { InputDraft } from './task-input-model';
+import type { TaskParameter } from '@deploy-crab/contracts/task-input';
+import { TaskScriptHelp } from './TaskScriptHelp';
 
 interface Props {
   call: TaskCall;
@@ -9,6 +13,8 @@ interface Props {
   tasks: Task[];
   catalog: TaskCatalog;
   compact?: boolean;
+  inputDraft: InputDraft;
+  parameters: TaskParameter[];
 }
 
 export const TaskCallEditor = ({
@@ -17,13 +23,18 @@ export const TaskCallEditor = ({
   tasks,
   catalog,
   compact = false,
+  inputDraft,
+  parameters,
 }: Props) => (
   <>
     <Form.Item label="调用方式">
       <Segmented<CallKind>
         block
         value={callKind(call)}
-        onChange={(kind) => onChange(newCall(kind))}
+        onChange={(kind) => {
+          inputDraft.clear();
+          onChange(newCall(kind));
+        }}
         options={[
           { value: 'builtin', label: '内建能力' },
           { value: 'script', label: 'Shell 脚本' },
@@ -32,20 +43,31 @@ export const TaskCallEditor = ({
       />
     </Form.Item>
     {call.kind === 'task' ? (
-      <Form.Item
-        label="选择任务"
-        extra={
-          tasks.length
-            ? '复用已保存的任务定义，步骤会等待被引用的任务完成。'
-            : '先保存一个独立任务，再在这里引用。'
-        }
-      >
-        <TaskReferenceSelect
-          value={call.taskId}
-          tasks={tasks}
-          onChange={(taskId: string) => onChange({ kind: 'task', taskId })}
+      <>
+        <Form.Item
+          label="选择任务"
+          extra={
+            tasks.length
+              ? '复用已保存的任务定义，步骤会等待被引用的任务完成。'
+              : '先保存一个独立任务，再在这里引用。'
+          }
+        >
+          <TaskReferenceSelect
+            value={call.taskId}
+            tasks={tasks}
+            onChange={(taskId: string) => {
+              if (taskId === call.taskId) return;
+              inputDraft.clear();
+              onChange({ kind: 'task', taskId });
+            }}
+          />
+        </Form.Item>
+        <TaskInputEditor
+          task={tasks.find((task) => task.id === call.taskId)}
+          input={call.input}
+          draft={inputDraft}
         />
-      </Form.Item>
+      </>
     ) : call.action === 'ssh.probe' ? (
       <Form.Item
         label="选择能力"
@@ -95,7 +117,7 @@ export const TaskCallEditor = ({
         </div>
         <Form.Item
           label="脚本内容"
-          extra="每个步骤使用独立的 Shell；跨步骤需要的变量应在使用处重新定义。"
+          extra="通过 DEPLOY_CRAB_INPUT 读取任务参数，展开下方说明可查看当前字段的读取示例。"
         >
           <Input.TextArea
             aria-label="脚本内容"
@@ -112,6 +134,7 @@ export const TaskCallEditor = ({
             }
           />
         </Form.Item>
+        <TaskScriptHelp parameters={parameters} />
       </>
     )}
   </>

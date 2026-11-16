@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import {
   TASK_ACTIONS,
+  taskCalls,
   taskReferences,
   type CreateTaskInput,
   type Task,
   type TaskCatalog,
   type UpdateTaskInput,
 } from '@deploy-crab/contracts/task';
+import { resolveTaskInput } from '@deploy-crab/contracts/task-input';
 import type { Database } from '../database/database';
 import {
   ConflictError,
@@ -116,5 +118,25 @@ export class TaskService {
       visited.add(id);
     };
     visit(task.id);
+    const validateInputs = (owner: Task) => {
+      for (const call of taskCalls(owner.definition)) {
+        if (call.kind !== 'task') continue;
+        const child =
+          call.taskId === task.id ? task : repository.get(call.taskId);
+        if (!child)
+          throw new InvalidReferenceError('引用的任务不存在或已被删除');
+        const { issues } = resolveTaskInput(
+          child.definition.parameters,
+          call.input,
+        );
+        if (issues.length)
+          throw new InvalidReferenceError(
+            `任务「${owner.name}」引用「${child.name}」的参数无效：${issues.map((issue) => issue.message).join('；')}`,
+          );
+      }
+    };
+    validateInputs(task);
+    // 参数改名、改类型或改为必填前，保护现有调用者。
+    for (const owner of repository.referencing(task.id)) validateInputs(owner);
   }
 }

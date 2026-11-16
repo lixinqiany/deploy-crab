@@ -20,7 +20,7 @@ const migrationsDirectory = fileURLToPath(
     import.meta.resolve('@deploy-crab/core/database/database'),
   ),
 );
-const body = (name: string): CreateTaskBody => ({
+const body = (name = 'task'): CreateTaskBody => ({
   name,
   definition: {
     steps: [
@@ -36,18 +36,20 @@ const body = (name: string): CreateTaskBody => ({
 describe('任务创建 (e2e)', () => {
   let app: INestApplication<App>, dataDirectory: string;
   const probe = vi.fn();
+  const exec = vi.fn();
   const boot = async () => {
     const module = await Test.createTestingModule({
       imports: [AppModule.forRoot({ dataDirectory, migrationsDirectory })],
     })
       .overrideProvider(SshRunner)
-      .useValue({ probe })
+      .useValue({ probe, exec })
       .compile();
     app = module.createNestApplication({ logger: false });
     await app.init();
   };
   beforeEach(async () => {
     probe.mockReset();
+    exec.mockReset();
     dataDirectory = await mkdtemp(join(tmpdir(), 'deploy-crab-tasks-e2e-'));
     await boot();
   });
@@ -65,6 +67,163 @@ describe('任务创建 (e2e)', () => {
     sourceUrl: task.sourceUrl,
     definition: task.definition,
     revision: task.revision,
+  });
+
+  it('引用任务可选传参，步骤及两层钩子重启后均保留；保存不执行脚本', async () => {
+    const child = await create({
+      ...body('可传参任务'),
+      definition: {
+        ...body().definition,
+        parameters: [
+          { name: 'mirrorUrl' },
+          { name: 'enabled', type: 'boolean' },
+          { name: 'count', type: 'number' },
+          { name: 'nested', type: 'json' },
+          { name: 'phase' },
+        ],
+      },
+    });
+    const input = {
+      mirrorUrl: 'https://example.test',
+      enabled: false,
+      count: 0,
+      nested: [null, { value: '' }],
+    };
+    const call = { kind: 'task' as const, taskId: child.id, input };
+    const parent = await create({
+      name: '调用者',
+      definition: {
+        steps: [
+          {
+            id: 'ref',
+            title: '引用',
+            call,
+            hooks: {
+              finally: [
+                {
+                  key: 'cleanup',
+                  title: '收尾',
+                  call: { ...call, input: { phase: 'step' } },
+                },
+              ],
+            },
+          },
+        ],
+        hooks: {
+          before: [
+            {
+              key: 'prepare',
+              title: '准备',
+              call: { ...call, input: { phase: 'task' } },
+            },
+          ],
+        },
+      },
+    });
+    expect(parent.definition.steps[0]?.call).toEqual(call);
+    await app.close();
+    await boot();
+    await http().get(`/tasks/${parent.id}`).expect(200, parent);
+    for (const invalid of [null, [], 'text', { value: 'x'.repeat(16_001) }]) {
+      await http()
+        .put(`/tasks/${parent.id}`)
+        .send({
+          ...replacement(parent),
+          definition: {
+            steps: [
+              { id: 'ref', title: '引用', call: { ...call, input: invalid } },
+            ],
+          },
+        })
+        .expect(400);
+    }
+    const cleared = await http()
+      .put(`/tasks/${parent.id}`)
+      .send({
+        ...replacement(parent),
+        definition: {
+          steps: [
+            {
+              id: 'ref',
+              title: '引用',
+              call: { kind: 'task', taskId: child.id },
+            },
+          ],
+        },
+      })
+      .expect(200);
+    expect((cleared.body as Task).definition.steps[0]?.call).toEqual({
+      kind: 'task',
+      taskId: child.id,
+    });
+    expect(probe).not.toHaveBeenCalled();
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it('必填参数在引用保存时由服务端校验，修改定义不能破坏已有引用', async () => {
+    const child = await create({
+      ...body('必填参数任务'),
+      definition: {
+        ...body().definition,
+        parameters: [
+          { name: 'url', required: true },
+          { name: 'enabled', type: 'boolean', required: true },
+        ],
+      },
+    });
+    const parent = (input?: unknown) => ({
+      name: '调用者',
+      definition: {
+        steps: [
+          {
+            id: 'ref',
+            title: '引用',
+            call: {
+              kind: 'task',
+              taskId: child.id,
+              ...(input === undefined ? {} : { input }),
+            },
+          },
+        ],
+      },
+    });
+    for (const input of [
+      undefined,
+      { url: 'x' },
+      { url: ' ', enabled: false },
+      { url: 'x', enabled: 'false' },
+      { url: 'x', enabled: false, extra: 'no' },
+    ])
+      await http().post('/tasks').send(parent(input)).expect(422);
+    await http()
+      .post('/tasks')
+      .send(parent({ url: 'https://example.test', enabled: false }))
+      .expect(201);
+    await http()
+      .put(`/tasks/${child.id}`)
+      .send({
+        ...replacement(child),
+        definition: {
+          ...child.definition,
+          parameters: [
+            ...child.definition.parameters,
+            { name: 'newRequired', required: true },
+          ],
+        },
+      })
+      .expect(422);
+    await http().get(`/tasks/${child.id}`).expect(200, child);
+    await http()
+      .post('/tasks')
+      .send({
+        ...body('错误默认值'),
+        definition: {
+          ...body().definition,
+          parameters: [{ name: 'count', type: 'number', defaultValue: '3' }],
+        },
+      })
+      .expect(400);
+    expect(exec).not.toHaveBeenCalled();
   });
 
   it('创建、编辑并重新打开任务，重启后保留，整个过程不调用 SSH', async () => {

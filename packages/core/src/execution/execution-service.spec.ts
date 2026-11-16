@@ -3,6 +3,7 @@ import {
   type Run,
 } from '@deploy-crab/contracts/execution';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { TaskParameters } from '@deploy-crab/contracts/task-input';
 import { ActionRegistry } from './action-registry';
 import type {
   Action,
@@ -61,6 +62,104 @@ describe('ExecutionService', () => {
   };
   afterEach(async () => {
     await Promise.all(services.splice(0).map((service) => service.close()));
+  });
+
+  it('任务参数与 Action 配置分开，提交后及各步骤和钩子之间互不污染', async () => {
+    const input = {
+      mirrorUrl: 'https://example.test',
+      nested: { enabled: false },
+    };
+    const received: unknown[] = [];
+    const service = create((config, context) => {
+      received.push({ config, input: structuredClone(context.taskInput) });
+      context.taskInput.mirrorUrl = 'modified-by-action';
+      context.taskInput.nested = null;
+      return Promise.resolve(null);
+    });
+    const run = service.submit(
+      plan(
+        [
+          step('first', {
+            hooks: {
+              finally: [
+                { key: 'cleanup', action: 'test', input: 'hook-config' },
+              ],
+            },
+          }),
+          step('second', { dependsOn: ['first'] }),
+        ],
+        {
+          parameters: TaskParameters.parse([
+            { name: 'mirrorUrl' },
+            { name: 'nested', type: 'json' },
+          ]),
+        },
+      ),
+      { input },
+    );
+    input.nested.enabled = true;
+    input.mirrorUrl = 'modified-by-caller';
+    run.input.mirrorUrl = 'modified-by-reader';
+    const done = await untilDone(service, run.id);
+    const original = {
+      mirrorUrl: 'https://example.test',
+      nested: { enabled: false },
+    };
+    expect(done.input).toEqual(original);
+    expect(received).toEqual(
+      ['first', 'hook-config', 'second'].map((config) => ({
+        config,
+        input: original,
+      })),
+    );
+  });
+
+  it('任务参数缺省为空对象，非 JSON 数据在排队前被拒绝', async () => {
+    const service = create((_config, context) =>
+      Promise.resolve(context.taskInput),
+    );
+    const run = service.submit(plan([step('empty')]));
+    expect((await untilDone(service, run.id)).steps[0]?.result).toEqual({});
+    expect(() =>
+      service.submit(plan([step('bad')]), { input: { value: NaN } }),
+    ).toThrow();
+    expect(() =>
+      service.submit(plan([step('big')]), {
+        input: { value: 'x'.repeat(16_001) },
+      }),
+    ).toThrow();
+  });
+
+  it('必填参数在排队前检查，默认值在执行前合并，false 和 0 可以覆盖默认值', async () => {
+    const calls = vi.fn((_config: unknown, context: ActionContext) =>
+      Promise.resolve(context.taskInput),
+    );
+    const service = create(calls);
+    const definition = plan([step('read')], {
+      parameters: TaskParameters.parse([
+        { name: 'url', required: true },
+        { name: 'enabled', type: 'boolean', defaultValue: true },
+        { name: 'count', type: 'number', defaultValue: 3 },
+      ]),
+    });
+    expect(() => service.submit(definition)).toThrow('任务参数不符合定义');
+    expect(calls).not.toHaveBeenCalled();
+    const run = service.submit(definition, {
+      input: { url: 'https://example.test', enabled: false, count: 0 },
+    });
+    expect((await untilDone(service, run.id)).steps[0]?.result).toEqual({
+      url: 'https://example.test',
+      enabled: false,
+      count: 0,
+    });
+    const defaults = service.submit(definition, {
+      input: { url: 'https://example.test' },
+    });
+    expect(defaults.input).toEqual({
+      url: 'https://example.test',
+      enabled: true,
+      count: 3,
+    });
   });
 
   it('无依赖步骤并发，依赖在主体和所有钩子成功后才放行；结果可供后续读取', async () => {

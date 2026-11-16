@@ -1,3 +1,5 @@
+import type { TaskInput } from './task-input';
+
 /** 执行对象与持久化无关；首版运行记录仅在 server 内存中短期保留。 */
 export type ExecutionStatus =
   | 'queued'
@@ -59,6 +61,7 @@ export interface Run extends ExecutionState {
   sessionId: string | null;
   source: string;
   task: string;
+  input: TaskInput;
   target: unknown;
   retention: 'memory';
   createdAt: string;

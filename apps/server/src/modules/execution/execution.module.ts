@@ -1,4 +1,5 @@
 import { sshProbeAction } from '@deploy-crab/core/actions/ssh-probe';
+import { sshExecAction } from '@deploy-crab/core/actions/ssh-exec';
 import { ActionRegistry } from '@deploy-crab/core/execution/action-registry';
 import { ExecutionService } from '@deploy-crab/core/execution/execution-service';
 import { MemoryRunStore } from '@deploy-crab/core/execution/run-store';
@@ -15,7 +16,9 @@ import { ExecutionController } from './execution.controller';
       provide: ExecutionService,
       useFactory: (runner: SshRunner) =>
         new ExecutionService(
-          new ActionRegistry().register(sshProbeAction(runner)),
+          new ActionRegistry()
+            .register(sshProbeAction(runner))
+            .register(sshExecAction(runner)),
           new MemoryRunStore(),
         ),
       inject: [SshRunner],

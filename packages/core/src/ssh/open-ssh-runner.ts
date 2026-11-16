@@ -7,8 +7,14 @@ import {
   type ConnectionEndpoint,
   type ProbeResult,
 } from '@deploy-crab/contracts/connection';
+import {
+  SshScriptInput,
+  type SshScriptResult,
+} from '@deploy-crab/contracts/ssh-script';
+import type { TaskInput } from '@deploy-crab/contracts/task-input';
 import { checkAborted, ExecutionFailure } from '../execution/execution-failure';
 import { SshRunner, type SshContext } from './ssh-runner';
+import { sshScript } from './ssh-script';
 
 const quote = (value: string): string =>
   '"' +
@@ -99,48 +105,84 @@ function sshFailure(stderr: string): ExecutionFailure {
       'name_resolution_failed',
       '无法解析主机地址，请检查目标和跳板地址',
     );
-  return new ExecutionFailure('ssh_failed', 'SSH 检查失败，请查看诊断输出');
+  return new ExecutionFailure('ssh_failed', 'SSH 执行失败，请查看诊断输出');
 }
 
 /** 探测使用全新、非交互连接；默认信任运行节点的 known_hosts，不自动接纳新指纹。 */
 export class OpenSshRunner extends SshRunner {
+  async exec(
+    target: ConnectionTarget,
+    script: SshScriptInput,
+    input: TaskInput,
+    context: SshContext,
+  ): Promise<SshScriptResult> {
+    const config = SshScriptInput.parse(script);
+    const body = sshScript(config, input);
+    const started = Date.now();
+    await this.withConnection(target, context, (path) =>
+      this.execute(path, target.jumps.length, context, {
+        command: `${config.shell} -s`,
+        body,
+      }),
+    );
+    return { exitCode: 0, elapsedMs: Date.now() - started };
+  }
+
   async probe(
     target: ConnectionTarget,
     context: SshContext,
   ): Promise<ProbeResult> {
+    const started = Date.now();
+    await this.withConnection(target, context, (path) =>
+      this.execute(path, target.jumps.length, context),
+    );
+    return {
+      connected: true,
+      elapsedMs: Date.now() - started,
+      address: target.endpoint.address,
+      port: target.endpoint.port,
+      user: target.endpoint.user,
+      hopCount: target.jumps.length,
+    };
+  }
+
+  private async withConnection(
+    target: ConnectionTarget,
+    context: SshContext,
+    execute: (configPath: string) => Promise<void>,
+  ): Promise<void> {
     const config = openSshConfig(target);
     checkAborted(context.signal);
     const directory = await mkdtemp(join(tmpdir(), 'deploy-crab-ssh-'));
-    const started = Date.now();
     try {
       const path = join(directory, 'config');
       await writeFile(path, config, { mode: 0o600 });
       checkAborted(context.signal);
-      await this.check(path, target.jumps.length, context);
-      return {
-        connected: true,
-        elapsedMs: Date.now() - started,
-        address: target.endpoint.address,
-        port: target.endpoint.port,
-        user: target.endpoint.user,
-        hopCount: target.jumps.length,
-      };
+      await execute(path);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
   }
 
-  private check(
+  private execute(
     configPath: string,
     targetIndex: number,
     context: SshContext,
+    script?: { command: string; body: string },
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const child = spawn(
         'ssh',
-        ['-F', configPath, '-T', '-n', `crab-${targetIndex}`, 'true'],
+        [
+          '-F',
+          configPath,
+          '-T',
+          ...(script ? [] : ['-n']),
+          `crab-${targetIndex}`,
+          script?.command ?? 'true',
+        ],
         {
-          stdio: ['ignore', 'pipe', 'pipe'],
+          stdio: ['pipe', 'pipe', 'pipe'],
           shell: false,
           detached: process.platform !== 'win32',
           env: { ...process.env, LC_ALL: 'C', SSH_ASKPASS_REQUIRE: 'never' },
@@ -195,10 +237,20 @@ export class OpenSshRunner extends SshRunner {
           return;
         }
         if (code === 0) resolve();
+        else if (script && code !== 255)
+          reject(
+            new ExecutionFailure(
+              'script_failed',
+              `远程脚本执行失败（退出码 ${code ?? '未知'}），请查看输出`,
+            ),
+          );
         else reject(sshFailure(stderr));
       });
       context.signal.addEventListener('abort', abort, { once: true });
       if (context.signal.aborted) abort();
+      // 连接在脚本写完前关闭时会产生 EPIPE；最终错误由 close/exit code 判定。
+      child.stdin.on('error', () => {});
+      child.stdin.end(script?.body);
     });
   }
 }

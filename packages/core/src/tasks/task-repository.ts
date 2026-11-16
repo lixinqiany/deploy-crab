@@ -41,6 +41,15 @@ export class TaskRepository {
       .all()
       .map((row) => row.name);
   }
+  referencing(id: string): Task[] {
+    return this.db
+      .select({ task: tasks })
+      .from(tasks)
+      .innerJoin(taskReferences, eq(tasks.id, taskReferences.taskId))
+      .where(eq(taskReferences.referencedTaskId, id))
+      .all()
+      .map((row) => Task.parse(row.task));
+  }
   save(task: Task, mode: 'insert' | 'update'): void {
     const fields = { ...Task.parse(task), nameKey: task.name.toLowerCase() };
     try {

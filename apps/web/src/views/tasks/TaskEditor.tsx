@@ -30,6 +30,12 @@ import { useState } from 'react';
 import { tasksApi } from '@/api/tasks';
 import { TaskCallEditor } from './TaskCallEditor';
 import { TaskHooksEditor } from './TaskHooksEditor';
+import { resolveInputDrafts, type InputDrafts } from './task-input-model';
+import {
+  parameterDraft,
+  resolveParameterDrafts,
+} from './parameter-editor-model';
+import { TaskParameterEditor } from './TaskParameterEditor';
 import {
   availableTaskReferences,
   callKindLabel,
@@ -61,11 +67,36 @@ export const TaskEditor = ({
   const [draft, setDraft] = useState(() => structuredClone(initial));
   const [selectedId, setSelectedId] = useState(initial.definition.steps[0]?.id);
   const [errors, setErrors] = useState<string[]>([]);
+  const [inputDrafts, setInputDrafts] = useState<InputDrafts>({});
+  const [parameterDrafts, setParameterDrafts] = useState(() =>
+    (initial.definition.parameters ?? []).map(parameterDraft),
+  );
+  const parameterState = resolveParameterDrafts(parameterDrafts);
+  const inputDraft = (path: string) => ({
+    fields: inputDrafts[path] ?? {},
+    onChange: (name: string, text: string) =>
+      setInputDrafts((previous) => ({
+        ...previous,
+        [path]: { ...previous[path], [name]: text },
+      })),
+    clear: () => setInputDrafts((previous) => ({ ...previous, [path]: {} })),
+  });
+  const resolved = resolveInputDrafts(draft.definition, inputDrafts, tasks);
+  const body = {
+    ...draft,
+    definition: {
+      ...resolved.definition,
+      parameters: parameterState.parameters,
+    },
+  };
   const steps = draft.definition.steps;
   const selected = steps.find((step) => step.id === selectedId);
   const selectedIndex = steps.findIndex((step) => step.id === selectedId);
   const references = availableTaskReferences(tasks, editing?.id);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
+  const dirty =
+    resolved.errors.length > 0 ||
+    parameterState.errors.length > 0 ||
+    JSON.stringify(body) !== JSON.stringify(initial);
   const setSteps = (next: TaskStep[]) =>
     setDraft({ ...draft, definition: { ...draft.definition, steps: next } });
   const updateStep = (next: TaskStep) =>
@@ -84,7 +115,11 @@ export const TaskEditor = ({
     onError: (error) => setErrors([error.message]),
   });
   const submit = () => {
-    const parsed = CreateTaskInput.safeParse(draft);
+    if (resolved.errors.length || parameterState.errors.length) {
+      setErrors([...parameterState.errors, ...resolved.errors]);
+      return;
+    }
+    const parsed = CreateTaskInput.safeParse(body);
     if (!parsed.success) {
       setErrors(
         parsed.error.issues.map((issue) => {
@@ -262,6 +297,10 @@ export const TaskEditor = ({
             }
           />
         </Form.Item>
+        <TaskParameterEditor
+          parameters={parameterDrafts}
+          onChange={setParameterDrafts}
+        />
         <div className="grid items-start gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
           <div className="rounded-xl border border-sand-4 bg-sand-2 p-3">
             <div className="mb-3 flex items-center justify-between">
@@ -354,6 +393,18 @@ export const TaskEditor = ({
                           title: `${selected.title.slice(0, 59)} 副本`,
                         };
                         const next = [...steps];
+                        const prefix = `steps.${selected.id}.`;
+                        setInputDrafts((previous) => ({
+                          ...previous,
+                          ...Object.fromEntries(
+                            Object.entries(previous)
+                              .filter(([path]) => path.startsWith(prefix))
+                              .map(([path, text]) => [
+                                `steps.${copy.id}.${path.slice(prefix.length)}`,
+                                text,
+                              ]),
+                          ),
+                        }));
                         next.splice(selectedIndex + 1, 0, copy);
                         setSteps(next);
                         setSelectedId(copy.id);
@@ -379,6 +430,8 @@ export const TaskEditor = ({
                   />
                 </Form.Item>
                 <TaskCallEditor
+                  parameters={parameterState.parameters}
+                  inputDraft={inputDraft(`steps.${selected.id}.call`)}
                   call={selected.call}
                   onChange={(call) => updateStep({ ...selected, call })}
                   tasks={references}
@@ -426,6 +479,9 @@ export const TaskEditor = ({
                       label: `步骤钩子 · ${Object.values(selected.hooks).flat().length}`,
                       children: (
                         <TaskHooksEditor
+                          parameters={parameterState.parameters}
+                          path={`steps.${selected.id}.hooks`}
+                          inputDraft={inputDraft}
                           hooks={selected.hooks}
                           onChange={(hooks) =>
                             updateStep({ ...selected, hooks })
@@ -458,6 +514,9 @@ export const TaskEditor = ({
                     应用于整个任务。钩子失败会影响任务结果，结束时的钩子用于收尾。
                   </p>
                   <TaskHooksEditor
+                    parameters={parameterState.parameters}
+                    path="hooks"
+                    inputDraft={inputDraft}
                     hooks={draft.definition.hooks}
                     onChange={(hooks) =>
                       setDraft({

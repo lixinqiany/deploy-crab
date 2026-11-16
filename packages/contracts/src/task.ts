@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { auditFields, Description, DisplayName, ResourceId } from './fields';
+import { SshScriptInput } from './ssh-script';
+import { TaskInput, TaskParameters } from './task-input';
 
 export const TASK_ACTIONS = [
   {
@@ -52,26 +54,17 @@ export const TaskCall = z.discriminatedUnion('kind', [
       .object({
         kind: z.literal('action'),
         action: z.literal('ssh.exec'),
-        input: z
-          .object({
-            script: z
-              .string()
-              .max(16_000, '脚本最多 16000 个字符')
-              .refine((s) => s.trim().length > 0, '请填写脚本'),
-            shell: z.enum(['bash', 'sh']).default('bash'),
-            cwd: z
-              .string()
-              .trim()
-              .min(1, '工作目录不能为空')
-              .max(1024)
-              .nullable()
-              .default(null),
-          })
-          .strict(),
+        input: SshScriptInput,
       })
       .strict(),
   ]),
-  z.object({ kind: z.literal('task'), taskId: ResourceId }).strict(),
+  z
+    .object({
+      kind: z.literal('task'),
+      taskId: ResourceId,
+      input: TaskInput.optional(),
+    })
+    .strict(),
 ]);
 export type TaskCall = z.output<typeof TaskCall>;
 
@@ -129,6 +122,7 @@ export type TaskStep = z.output<typeof TaskStep>;
 export const TaskDefinition = z
   .object({
     schemaVersion: z.literal(1).default(1),
+    parameters: TaskParameters.default([]),
     steps: z
       .array(TaskStep)
       .min(1, '请至少添加一个步骤')
@@ -244,16 +238,20 @@ export interface TaskCatalog {
 }
 
 /** 包含任务钩子和步骤钩子，引用检查与删除保护使用同一份遍历规则。 */
-export const taskReferences = (definition: TaskDefinition): string[] => {
+export const taskCalls = (definition: TaskDefinition): TaskCall[] => {
   const hooks = (value: TaskHooks) =>
     TASK_HOOK_PHASES.flatMap((phase) => value[phase].map((hook) => hook.call));
-  const calls = [
+  return [
     ...hooks(definition.hooks),
     ...definition.steps.flatMap((step) => [step.call, ...hooks(step.hooks)]),
   ];
+};
+export const taskReferences = (definition: TaskDefinition): string[] => {
   return [
     ...new Set(
-      calls.flatMap((call) => (call.kind === 'task' ? [call.taskId] : [])),
+      taskCalls(definition).flatMap((call) =>
+        call.kind === 'task' ? [call.taskId] : [],
+      ),
     ),
   ];
 };

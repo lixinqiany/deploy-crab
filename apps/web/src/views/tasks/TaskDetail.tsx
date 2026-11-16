@@ -13,6 +13,8 @@ import {
 } from '@ant-design/icons';
 import { Button, Collapse, Popconfirm, Tag } from 'antd';
 import { callKindLabel } from './task-editor-model';
+import { PARAMETER_TYPE_LABELS } from '@deploy-crab/contracts/task-input';
+import { formatParameterValue } from './parameter-editor-model';
 
 const CallPreview = ({
   call,
@@ -25,13 +27,24 @@ const CallPreview = ({
 }) => {
   if (call.kind === 'task')
     return (
-      <Button
-        type="link"
-        className="h-auto p-0"
-        onClick={() => onOpenTask(call.taskId)}
-      >
-        {tasks.find((task) => task.id === call.taskId)?.name ?? '任务不可用'} →
-      </Button>
+      <div>
+        <Button
+          type="link"
+          className="h-auto p-0"
+          onClick={() => onOpenTask(call.taskId)}
+        >
+          {tasks.find((task) => task.id === call.taskId)?.name ?? '任务不可用'}{' '}
+          →
+        </Button>
+        {call.input && Object.keys(call.input).length > 0 && (
+          <details className="mt-2 text-xs text-sand-11">
+            <summary className="cursor-pointer">查看传入参数</summary>
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all">
+              {JSON.stringify(call.input, null, 2)}
+            </pre>
+          </details>
+        )}
+      </div>
     );
   if (call.action === 'ssh.probe')
     return (
@@ -172,6 +185,46 @@ export const TaskDetail = ({
           <LinkOutlined />
           参考文档
         </a>
+      )}
+      {!!task.definition.parameters?.length && (
+        <section
+          className="mt-4 rounded-lg border border-sand-4 p-3"
+          aria-label="任务参数定义"
+        >
+          <div className="mb-3 font-medium text-sand-12">任务参数</div>
+          <div className="flex flex-col gap-3">
+            {task.definition.parameters.map((parameter) => (
+              <div key={parameter.name}>
+                <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                  <span>{parameter.title || parameter.name}</span>
+                  <code className="text-xs text-sand-9">{parameter.name}</code>
+                  <Tag color={parameter.required ? 'orange' : 'default'}>
+                    {parameter.required ? '必填' : '可选'}
+                  </Tag>
+                  <span className="text-xs text-sand-9">
+                    {PARAMETER_TYPE_LABELS[parameter.type]}
+                  </span>
+                </div>
+                {parameter.description && (
+                  <p className="my-1 text-xs text-sand-11">
+                    {parameter.description}
+                  </p>
+                )}
+                {parameter.defaultValue !== undefined && (
+                  <p className="my-1 break-all text-xs text-sand-9">
+                    默认值：
+                    <code>
+                      {formatParameterValue(
+                        parameter.type,
+                        parameter.defaultValue,
+                      )}
+                    </code>
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
       <div className="mt-4 flex flex-col gap-3">
         {task.definition.steps.map((step, index) => {

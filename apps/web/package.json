@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && cross-env NODE_ENV=production vite build",
     "start": "vite preview",
     "check-types": "tsc --noEmit",
+    "test": "vitest run",
     "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
@@ -36,6 +37,7 @@
     "tailwindcss": "4.3.5",
     "typescript": "7.0.2",
     "vite": "8.2.2",
-    "vite-plugin-svgr": "5.2.0"
+    "vite-plugin-svgr": "5.2.0",
+    "vitest": "^4.1.12"
   }
 }

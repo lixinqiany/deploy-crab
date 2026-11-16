@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import {
+  TaskParameters,
+  resolveTaskInput,
+  type TaskInput,
+} from '@deploy-crab/contracts/task-input';
+import {
   isExecutionFinished,
   type ExecutionError,
   type ExecutionState,
@@ -13,6 +18,7 @@ import {
   ConflictError,
   InvalidReferenceError,
   NotFoundError,
+  ValidationError,
 } from '../errors/domain-error';
 import type { ActionRegistry } from './action-registry';
 import { Concurrency } from './concurrency';
@@ -40,6 +46,7 @@ interface PendingRun {
 }
 
 export interface SubmitOptions {
+  input?: TaskInput;
   sessionId?: string | null;
   source?: string;
   dependsOn?: string[];
@@ -72,6 +79,18 @@ export class ExecutionService {
     if (this.#closed) throw new ConflictError('执行服务已关闭');
     const plan = structuredClone(definition);
     this.validate(plan);
+    const { input, issues } = resolveTaskInput(
+      TaskParameters.parse(plan.parameters ?? []),
+      options.input,
+    );
+    if (issues.length)
+      throw new ValidationError(
+        '任务参数不符合定义',
+        issues.map((issue) => ({
+          path: ['input', issue.name],
+          message: issue.message,
+        })),
+      );
     const dependsOn = [...new Set(options.dependsOn ?? [])];
     // 依赖只能指向已存在的 Run，且提交后不可修改，因此不会引入跨 Run 的环。
     for (const id of dependsOn) {
@@ -82,6 +101,7 @@ export class ExecutionService {
       ...initialState(),
       id: randomUUID(),
       task: plan.task,
+      input,
       sessionId: options.sessionId ?? null,
       source: options.source ?? 'internal',
       target: plan.target,
@@ -397,6 +417,7 @@ export class ExecutionService {
       const result = await this.actions
         .get(call.action)
         .execute(call.input ?? null, {
+          taskInput: structuredClone(run.input),
           runId: run.id,
           stepId,
           target: structuredClone(run.target),

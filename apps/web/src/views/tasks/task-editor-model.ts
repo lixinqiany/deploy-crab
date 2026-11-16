@@ -45,7 +45,12 @@ export const blankTask = (): CreateTaskInput => ({
   description: '',
   labels: [],
   sourceUrl: null,
-  definition: { schemaVersion: 1, steps: [], hooks: emptyTaskHooks() },
+  definition: {
+    schemaVersion: 1,
+    parameters: [],
+    steps: [],
+    hooks: emptyTaskHooks(),
+  },
 });
 export const copyTaskBody = (task: Task): CreateTaskInput => ({
   name: task.name,

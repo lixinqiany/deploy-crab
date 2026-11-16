@@ -3,11 +3,17 @@ import type {
   ExecutionPhase,
   HookPhase,
 } from '@deploy-crab/contracts/execution';
+import type {
+  TaskInput,
+  TaskParameter,
+} from '@deploy-crab/contracts/task-input';
 
 export interface ActionContext {
   runId: string;
   stepId: string | null;
   target: unknown;
+  /** 本次任务调用的数据快照；不同于 Action 自身的配置 input。 */
+  taskInput: TaskInput;
   signal: AbortSignal;
   /** 所属 Run/Step 在调用时的快照，供后置和收尾钩子读取结果与错误。 */
   lifecycle: {
@@ -46,6 +52,7 @@ export interface StepDefinition extends ActionCall {
 }
 
 export interface ExecutionPlan {
+  parameters?: TaskParameter[];
   task: string;
   target: unknown;
   steps: StepDefinition[];

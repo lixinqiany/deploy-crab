@@ -249,4 +249,80 @@ describe('TaskService', () => {
       ]).success,
     ).toBe(true);
   });
+
+  it('独立任务可声明必填字段；引用时校验步骤与两层钩子，默认值不写入调用处', () => {
+    const child = service.create(
+      body('带参数的任务', {
+        definition: {
+          ...body().definition,
+          parameters: [
+            { name: 'url', required: true },
+            { name: 'enabled', type: 'boolean', defaultValue: false },
+          ],
+        },
+      }),
+    );
+    expect(child.definition.parameters[0]?.required).toBe(true);
+    expect(() => service.create(reference('缺少参数', child.id))).toThrow(
+      '必填参数',
+    );
+    for (const position of ['step', 'task-hook', 'step-hook'] as const) {
+      const input = body(position);
+      const call = {
+        kind: 'task' as const,
+        taskId: child.id,
+        input: { url: 'https://example.test' },
+      };
+      if (position === 'step') input.definition.steps[0]!.call = call;
+      else
+        (position === 'task-hook'
+          ? input.definition.hooks
+          : input.definition.steps[0]!.hooks
+        ).finally.push({
+          key: 'cleanup',
+          title: '收尾',
+          call,
+          timeoutMs: 5000,
+        });
+      const owner = service.create(input);
+      const savedCalls = [
+        owner.definition.steps[0]!.call,
+        ...owner.definition.hooks.finally.map((h) => h.call),
+        ...owner.definition.steps[0]!.hooks.finally.map((h) => h.call),
+      ];
+      expect(savedCalls.find((c) => c.kind === 'task')).toEqual(call);
+      call.input.url = '';
+      expect(() =>
+        service.update(owner.id, { ...input, revision: owner.revision }),
+      ).toThrow('不能为空');
+    }
+  });
+
+  it('修改子任务参数不能使已有引用失效，失败时参数定义保持不变', () => {
+    const child = service.create(
+      body('child', {
+        definition: { ...body().definition, parameters: [{ name: 'url' }] },
+      }),
+    );
+    const input = reference('parent', child.id);
+    input.definition.steps[0]!.call = {
+      kind: 'task',
+      taskId: child.id,
+      input: { url: 'https://example.test' },
+    };
+    service.create(input);
+    for (const parameters of [
+      [{ name: 'url', type: 'number' as const }],
+      [{ name: 'changed' }],
+      [{ name: 'url' }, { name: 'token', required: true }],
+    ]) {
+      const modified = body('child', {
+        definition: { ...child.definition, parameters },
+      });
+      expect(() =>
+        service.update(child.id, { ...modified, revision: child.revision }),
+      ).toThrow('parent');
+      expect(service.get(child.id)).toEqual(child);
+    }
+  });
 });
