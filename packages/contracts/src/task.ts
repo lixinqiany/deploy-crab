@@ -112,6 +112,8 @@ export const TaskStep = z
     title: DisplayName,
     call: TaskCall,
     dependsOn: z.array(NodeKey).max(63).default([]),
+    // 只声明后续 Session 是否允许用户跳过，不代表本次已经选择跳过。
+    skippable: z.boolean().default(false),
     timeoutMs: Timeout.default(60_000),
     hooks: TaskHooks.default(emptyTaskHooks),
   })

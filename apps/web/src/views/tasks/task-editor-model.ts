@@ -37,6 +37,7 @@ export const newStep = (kind: CallKind, previous?: string): TaskStep => ({
   ],
   call: newCall(kind),
   dependsOn: previous ? [previous] : [],
+  skippable: false,
   timeoutMs: 60_000,
   hooks: emptyTaskHooks(),
 });

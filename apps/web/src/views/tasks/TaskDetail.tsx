@@ -250,6 +250,7 @@ export const TaskDetail = ({
                 >
                   {callKindLabel(step.call)}
                 </Tag>
+                {step.skippable && <Tag color="orange">可跳过</Tag>}
                 <span className="ml-auto text-xs text-sand-9">
                   超时 {step.timeoutMs / 1000} 秒
                 </span>

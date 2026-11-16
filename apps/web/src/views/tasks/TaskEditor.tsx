@@ -23,6 +23,7 @@ import {
   Input,
   InputNumber,
   Select,
+  Switch,
   Tag,
 } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -316,7 +317,7 @@ export const TaskEditor = ({
                 onChange={(id: string) => setSelectedId(id)}
                 options={steps.map((step, index) => ({
                   value: step.id,
-                  label: `${index + 1}. ${step.title || '未命名步骤'}`,
+                  label: `${index + 1}. ${step.title || '未命名步骤'}${step.skippable ? ' · 可跳过' : ''}`,
                 }))}
               />
             </div>
@@ -339,6 +340,7 @@ export const TaskEditor = ({
                     </span>
                     <span className="text-[11px] text-sand-9">
                       {callKindLabel(step.call)}
+                      {step.skippable ? ' · 可跳过' : ''}
                     </span>
                   </span>
                 </button>
@@ -426,6 +428,20 @@ export const TaskEditor = ({
                     maxLength={64}
                     onChange={(e) =>
                       updateStep({ ...selected, title: e.target.value })
+                    }
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="允许跳过"
+                  extra="默认执行；开启后，可在后续 Session 执行时选择跳过这一步。"
+                >
+                  <Switch
+                    aria-label="步骤可跳过"
+                    checked={selected.skippable}
+                    checkedChildren="可跳过"
+                    unCheckedChildren="必做"
+                    onChange={(skippable) =>
+                      updateStep({ ...selected, skippable })
                     }
                   />
                 </Form.Item>

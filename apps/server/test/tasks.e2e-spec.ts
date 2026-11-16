@@ -236,16 +236,29 @@ describe('任务创建 (e2e)', () => {
     });
     expect(task.labels).toEqual(['巡检', 'SSH']);
     expect(task.definition.steps).toHaveLength(1);
+    expect(task.definition.steps[0]?.skippable).toBe(false);
     await http().get(`/tasks/${task.id}`).expect(200, task);
     await http().get('/tasks').expect(200, [task]);
     const updated = (
       await http()
         .put(`/tasks/${task.id}`)
-        .send({ ...replacement(task), name: '我的连接检查', labels: ['网络'] })
+        .send({
+          ...replacement(task),
+          name: '我的连接检查',
+          labels: ['网络'],
+          definition: {
+            ...task.definition,
+            steps: task.definition.steps.map((step) => ({
+              ...step,
+              skippable: true,
+            })),
+          },
+        })
         .expect(200)
     ).body as Task;
     expect(updated.revision).toBe(2);
     expect(updated.labels).toEqual(['网络']);
+    expect(updated.definition.steps[0]?.skippable).toBe(true);
     await http().put(`/tasks/${task.id}`).send(replacement(task)).expect(409);
     await http().post(`/tasks/${task.id}/run`).expect(404);
     await app.close();
@@ -254,10 +267,21 @@ describe('任务创建 (e2e)', () => {
     const cleared = (
       await http()
         .put(`/tasks/${task.id}`)
-        .send({ ...replacement(updated), labels: [] })
+        .send({
+          ...replacement(updated),
+          labels: [],
+          definition: {
+            ...updated.definition,
+            steps: updated.definition.steps.map((step) => ({
+              ...step,
+              skippable: false,
+            })),
+          },
+        })
         .expect(200)
     ).body as Task;
     expect(cleared.labels).toEqual([]);
+    expect(cleared.definition.steps[0]?.skippable).toBe(false);
     expect(probe).not.toHaveBeenCalled();
   });
 
@@ -309,6 +333,22 @@ describe('任务创建 (e2e)', () => {
 
   it('非法输入返回字段问题，名称冲突和缺失引用返回业务错误', async () => {
     await create(body('task'));
+    await http()
+      .post('/tasks')
+      .send({
+        ...body('invalid-skippable'),
+        definition: {
+          steps: [
+            {
+              id: 'check',
+              title: '检查连接',
+              call: { kind: 'action', action: 'ssh.probe' },
+              skippable: 'true',
+            },
+          ],
+        },
+      })
+      .expect(400);
     for (const labels of [
       [''],
       ['a', ' a '],

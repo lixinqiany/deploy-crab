@@ -50,6 +50,8 @@ Server 的 Rspack 配置将该目录复制到 `.dev/migrations/` 和 `dist/migra
 
 定义不绑定主机或 Session，不保存执行状态。任务钩子、步骤钩子支持 `before`、`afterSuccess`、`finally`，同一阶段按数组顺序保存。步骤的数组顺序用于展示，调度关系由 `dependsOn` 表达：新增步骤默认依赖上一步，用户可以清除或选择多个依赖。
 
+步骤可声明 `skippable: true`，表示允许用户在后续 Session 的执行配置中选择跳过。默认值为 `false`，旧定义缺少该字段时也按 `false` 读取；即使允许跳过，默认仍然执行。该字段属于步骤（包括引用任务的步骤），不属于被引用任务本身，也不是执行状态。本阶段只保存并展示标记；Session 的具体选择和跳过调度尚未实现，现有执行内核不因该标记自动跳过。字段存于现有 `tasks.definition` JSON，不需要 migration。
+
 `TaskService` 在单个写事务中检查名称、任务引用、循环和修改版本。`tasks.definition` 保存完整的 JSON 定义，`task_references` 索引步骤与全部钩子中的任务引用，外键和业务检查共同保护删除。步骤依赖循环由共享 Schema 检查，任务引用循环由 Service 检查。修改采用完整替换并提交当前 `revision`；过期版本返回 409，避免不同窗口互相覆盖。`revision` 是修改计数，当前没有历史版本恢复或运行版本锁定。
 
 | 接口 | 用途 |
