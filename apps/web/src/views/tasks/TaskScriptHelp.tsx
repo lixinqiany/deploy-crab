@@ -33,6 +33,18 @@ export const TaskScriptHelp = ({
     ) : (
       <p>先在上方“任务参数”卡片添加字段，这里会生成对应的读取示例。</p>
     )}
+    <p>
+      <code>DEPLOY_CRAB_CONTEXT</code> 是另一个 JSON 环境变量：
+      <code>target</code> 为当前主机（id、name、address），<code>targets</code>{' '}
+      为本次主机名单，<code>results</code> 为已完成的前置结果。address 是 SSH
+      地址，应用成员地址应单独配置。
+    </p>
+    <p>
+      需要返回数据时选择“结构化 JSON 结果”，stdout 只写一个 JSON 值（最多 16000
+      字符）；日志写到
+      stderr。后续步骤先声明依赖，再绑定结果路径。引用任务的结果位于
+      result.步骤标识；跨主机步骤按主机 ID 返回结果。
+    </p>
     <p className="mb-0">每个步骤使用独立 Shell；不要使用 eval 执行参数内容。</p>
   </details>
 );

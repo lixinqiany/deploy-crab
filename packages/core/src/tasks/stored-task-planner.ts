@@ -8,7 +8,14 @@ import {
   resolveTaskInput,
   type TaskInput,
 } from '@deploy-crab/contracts/task-input';
-import { resolveTaskInputMapping } from '@deploy-crab/contracts/task-input-bindings';
+import {
+  resolveTaskInputMapping,
+  validateTaskInputMapping,
+} from '@deploy-crab/contracts/task-input-bindings';
+import type {
+  TaskExecutionContext,
+  TaskPlacement,
+} from '@deploy-crab/contracts/task-placement';
 import type { ConnectionTarget } from '@deploy-crab/contracts/connection';
 import type { ActionCall, ExecutionPlan, Hooks } from '../execution/definition';
 import { ValidationError } from '../errors/domain-error';
@@ -19,6 +26,7 @@ export function compileStoredTask(
   target: ConnectionTarget,
   targetName: string,
   provided: TaskInput,
+  context?: TaskExecutionContext,
 ) {
   const active = new Set(config.parameters.map((p) => p.name));
   const unknown = Object.keys(provided).filter(
@@ -68,6 +76,36 @@ export function compileStoredTask(
         ),
       ),
     };
+    if (
+      Object.values(mapping.inputBindings).some(
+        (binding) => binding.from !== 'taskInput',
+      )
+    ) {
+      const checked = validateTaskInputMapping(
+        config.parameters,
+        child.parameters,
+        mapping,
+      );
+      if (checked.issues.length)
+        throw new ValidationError(
+          '子任务参数绑定无效',
+          checked.issues.map((issue) => ({
+            path: [config.path, 'input', issue.name],
+            message: issue.message,
+          })),
+        );
+      return {
+        action: 'task.invoke',
+        deferredTask: {
+          config: child,
+          mapping,
+          parameters: config.parameters,
+          target,
+          targetName,
+          context: context ?? { targets: [] },
+        },
+      };
+    }
     const childInput = resolveTaskInputMapping(
       config.parameters,
       child.parameters,
@@ -82,11 +120,12 @@ export function compileStoredTask(
           message: issue.message,
         })),
       );
-    const compiled = compileStoredTask(
+    const compiled = compileTaskInvocation(
       child,
       target,
       targetName,
       childInput.input,
+      context,
     );
     return { action: 'task.invoke', task: compiled };
   };
@@ -108,6 +147,7 @@ export function compileStoredTask(
     taskRevision: config.task.revision,
     target,
     targetName,
+    ...(context ? { context } : {}),
     parameters: config.parameters,
     skippedSteps: config.steps
       .filter((step) => step.inactive)
@@ -124,4 +164,128 @@ export function compileStoredTask(
     })),
   };
   return { plan, input };
+}
+
+export interface TaskHostTarget {
+  hostId: string;
+  name: string;
+  target: ConnectionTarget;
+}
+
+export function compileTaskInvocation(
+  config: ConfiguredTask,
+  target: ConnectionTarget,
+  name: string,
+  input: TaskInput,
+  context?: TaskExecutionContext,
+) {
+  if (config.task.definition.execution === 'orchestrated') {
+    if (!target.hostId)
+      throw new ValidationError('协作任务需要已保存的目标主机', []);
+    return compileOrchestratedTask(
+      config,
+      [{ hostId: target.hostId, name, target }],
+      input,
+      name,
+      context?.targets,
+    );
+  }
+  return compileStoredTask(config, target, name, input, context);
+}
+
+/** 协作任务只生成一个根计划；每个逻辑步骤分派到冻结的成员快照。 */
+export function compileOrchestratedTask(
+  config: ConfiguredTask,
+  targets: TaskHostTarget[],
+  provided: TaskInput,
+  label: string,
+  inheritedTargets?: TaskExecutionContext['targets'],
+) {
+  if (!targets.length) throw new ValidationError('请至少选择一台主机', []);
+  const members = targets.map(({ hostId, name, target }) => ({
+    id: hostId,
+    name,
+    address: target.endpoint.address,
+  }));
+  const allMembers = inheritedTargets ?? members;
+  const compiled = targets.map((host, index) =>
+    compileStoredTask(config, host.target, host.name, provided, {
+      target: members[index]!,
+      targets: allMembers,
+    }),
+  );
+  const first = compiled[0]!;
+  const dispatch = (
+    title: string,
+    placement: TaskPlacement | undefined,
+    select: (plan: ExecutionPlan) => ActionCall,
+  ): ActionCall => {
+    const rule = placement ?? { kind: 'each' };
+    if (
+      rule.kind === 'input' &&
+      !targets.some((target) => target.hostId === first.input[rule.key])
+    )
+      throw new ValidationError('指定的执行主机不在本次目标中', []);
+    return {
+      action: 'task.dispatch',
+      dispatch: {
+        placement: rule,
+        branches: compiled.map(({ plan, input }, index) => ({
+          hostId: targets[index]!.hostId,
+          input,
+          plan: {
+            task: `${title} · ${targets[index]!.name}`,
+            target: targets[index]!.target,
+            targetName: targets[index]!.name,
+            context: plan.context!,
+            parameters: config.parameters,
+            steps: [{ ...select(plan), id: 'execute', title, dependsOn: [] }],
+          },
+        })),
+      },
+    };
+  };
+  const hooks = (
+    definitions: ConfiguredHooks,
+    select: (plan: ExecutionPlan) => Hooks | undefined,
+  ): Hooks =>
+    Object.fromEntries(
+      TASK_HOOK_PHASES.map((phase) => [
+        phase,
+        definitions[phase].map((hook, index) => ({
+          ...dispatch(
+            hook.definition.title,
+            hook.definition.placement,
+            (plan) => select(plan)![phase]![index]!,
+          ),
+          key: hook.definition.key,
+          title: hook.definition.title,
+          timeoutMs: hook.definition.timeoutMs,
+        })),
+      ]),
+    );
+  const plan: ExecutionPlan = {
+    ...first.plan,
+    target: { kind: 'group', hostIds: targets.map((target) => target.hostId) },
+    targetName: label,
+    context: { targets: allMembers },
+    hooks: hooks(config.hooks, (plan) => plan.hooks),
+    steps: config.steps.map((step, index) => ({
+      id: step.definition.id,
+      title: step.definition.title,
+      dependsOn: step.definition.dependsOn,
+      timeoutMs: step.definition.timeoutMs,
+      ...(step.inactive
+        ? { action: 'task.skipped', skip: true }
+        : {
+            ...dispatch(
+              step.definition.title,
+              step.definition.placement,
+              (plan) => ({ ...plan.steps[index]!, hooks: undefined }),
+            ),
+            hooks: hooks(step.hooks, (plan) => plan.steps[index]!.hooks),
+          }),
+    })),
+  };
+  return { plan, input: first.input };
 }

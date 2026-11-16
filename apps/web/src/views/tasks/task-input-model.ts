@@ -16,7 +16,7 @@ import {
 } from './parameter-editor-model';
 
 export interface InputFieldDraft {
-  mode: 'omit' | 'value' | 'binding';
+  mode: 'omit' | 'value' | 'binding' | 'result' | 'context';
   text: string;
   sourceKey: string;
 }
@@ -35,10 +35,23 @@ export function inputFieldDraft(
   const value = mapping.input?.[parameter.name];
   const binding = mapping.inputBindings?.[parameter.name];
   return {
-    mode: binding ? 'binding' : value !== undefined ? 'value' : 'omit',
+    mode: binding
+      ? binding.from === 'stepResult'
+        ? 'result'
+        : binding.from === 'context'
+          ? 'context'
+          : 'binding'
+      : value !== undefined
+        ? 'value'
+        : 'omit',
     text:
-      value === undefined ? '' : formatParameterValue(parameter.type, value),
-    sourceKey: binding?.key ?? '',
+      binding?.from === 'stepResult'
+        ? binding.path.join('.')
+        : value === undefined
+          ? ''
+          : formatParameterValue(parameter.type, value),
+    sourceKey:
+      binding?.from === 'stepResult' ? binding.stepId : (binding?.key ?? ''),
   };
 }
 
@@ -64,6 +77,22 @@ export function resolveCallInput(
     if (field.mode === 'binding') {
       if (!field.sourceKey) errors[name] = '请选择当前任务的参数';
       else inputBindings[name] = { from: 'taskInput', key: field.sourceKey };
+      continue;
+    }
+    if (field.mode === 'result') {
+      if (!field.sourceKey) errors[name] = '请选择提供结果的前置步骤';
+      else
+        inputBindings[name] = {
+          from: 'stepResult',
+          stepId: field.sourceKey,
+          path: field.text ? field.text.split('.') : [],
+        };
+      continue;
+    }
+    if (field.mode === 'context') {
+      if (field.sourceKey !== 'target' && field.sourceKey !== 'targets')
+        errors[name] = '请选择执行上下文';
+      else inputBindings[name] = { from: 'context', key: field.sourceKey };
       continue;
     }
     const parsed = parseParameterValue(parameter.type, field.text);

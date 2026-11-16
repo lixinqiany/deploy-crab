@@ -31,6 +31,9 @@ import {
 import type { RunStore } from './run-store';
 import type { RunTree } from '@deploy-crab/contracts/session';
 import type { TargetSnapshot } from '@deploy-crab/contracts/execution-target';
+import { readResultPath } from '@deploy-crab/contracts/task-placement';
+import { resolveTaskInputMapping } from '@deploy-crab/contracts/task-input-bindings';
+import { compileTaskInvocation } from '../tasks/stored-task-planner';
 
 const PHASES: HookPhase[] = ['before', 'afterSuccess', 'finally'];
 const initialState = (): ExecutionState => ({
@@ -134,6 +137,11 @@ export class ExecutionService {
       sessionId: options.sessionId ?? null,
       source: options.source ?? 'internal',
       target: plan.target,
+      ...(plan.context ? { executionContext: plan.context } : {}),
+      secretInputs:
+        plan.parameters
+          ?.filter((parameter) => parameter.secret)
+          .map((parameter) => parameter.name) ?? [],
       retention: options.sessionId ? 'persistent' : 'memory',
       ...(options.parentRunId ? { parentRunId: options.parentRunId } : {}),
       ...(options.requestId ? { requestId: options.requestId } : {}),
@@ -458,7 +466,7 @@ export class ExecutionService {
     signal: AbortSignal,
   ): Promise<unknown> {
     // 编排节点不占 SSH 并发槽，否则并发为 1 时父任务会等待拿不到槽的子任务。
-    return call.task
+    return call.task || call.dispatch || call.deferredTask
       ? this.invokeCall(run, stepId, hookId, call, signal)
       : this.#slots.use(signal, () =>
           this.invokeCall(run, stepId, hookId, call, signal),
@@ -486,8 +494,114 @@ export class ExecutionService {
     try {
       const owner =
         stepId === null ? run : run.steps.find((step) => step.id === stepId)!;
+      const results = {
+        ...run.executionContext?.results,
+        ...Object.fromEntries(
+          run.steps
+            .filter((step) => step.status === 'succeeded')
+            .map((step) => [step.id, step.result]),
+        ),
+      };
+      if (call.deferredTask) {
+        const template = call.deferredTask;
+        const resolved = resolveTaskInputMapping(
+          template.parameters,
+          template.config.parameters,
+          template.mapping,
+          run.input,
+          { results, context: run.executionContext },
+        );
+        if (resolved.issues.length)
+          throw new ExecutionFailure(
+            'input_binding_failed',
+            resolved.issues.map((issue) => issue.message).join('；'),
+          );
+        const task = compileTaskInvocation(
+          template.config,
+          template.target,
+          template.targetName,
+          resolved.input,
+          { ...template.context, results },
+        );
+        return await this.invokeCall(
+          run,
+          stepId,
+          hookId,
+          { action: 'task.invoke', task, timeoutMs: call.timeoutMs },
+          controller.signal,
+        );
+      }
+      if (call.dispatch) {
+        const { placement, branches } = call.dispatch;
+        const selectedId =
+          placement.kind === 'input'
+            ? run.input[placement.key]
+            : placement.kind === 'result'
+              ? readResultPath(results[placement.stepId], placement.path)
+              : branches[0]?.hostId;
+        const selected =
+          placement.kind === 'each'
+            ? branches
+            : branches.filter((branch) => branch.hostId === selectedId);
+        if (!selected.length)
+          throw new ExecutionFailure(
+            'invalid_target',
+            '步骤选择的主机不在本次目标快照中，或前置步骤没有返回主机 ID',
+          );
+        const plan: ExecutionPlan = {
+          task: '分派到目标主机',
+          target: run.target,
+          parameters: [],
+          context: { targets: run.executionContext?.targets ?? [], results },
+          steps: selected.map((branch, index) => ({
+            id: `host-${index}`,
+            title: branch.plan.targetName ?? branch.hostId,
+            action: 'task.invoke',
+            timeoutMs: call.timeoutMs,
+            task: {
+              input: branch.input,
+              plan: {
+                ...branch.plan,
+                context: { ...branch.plan.context!, results },
+              },
+            },
+          })),
+        };
+        const completed = await this.invokeCall(
+          run,
+          stepId,
+          hookId,
+          {
+            action: 'task.invoke',
+            task: { plan, input: {} },
+            timeoutMs: call.timeoutMs,
+          },
+          controller.signal,
+        );
+        const values = selected.map(
+          (branch, index) =>
+            [
+              branch.hostId,
+              readResultPath(completed, [
+                'result',
+                `host-${index}`,
+                'result',
+                'execute',
+              ]),
+            ] as const,
+        );
+        return placement.kind === 'each'
+          ? Object.fromEntries(values)
+          : values[0]![1];
+      }
       if (call.task) {
-        const child = this.prepare(call.task.plan, {
+        const childPlan = structuredClone(call.task.plan);
+        if (childPlan.context)
+          childPlan.context.results = {
+            ...childPlan.context.results,
+            ...results,
+          };
+        const child = this.prepare(childPlan, {
           input: call.task.input,
           sessionId: run.sessionId,
           source: 'task.reference',
@@ -521,7 +635,7 @@ export class ExecutionService {
             'child_task_failed',
             `子任务「${child.run.task}」未成功：${child.run.errors[0]?.message ?? child.run.status}`,
           );
-        return { childRunId: child.run.id };
+        return { childRunId: child.run.id, result: child.run.result };
       }
       const result = await this.actions
         .get(call.action)
@@ -536,8 +650,17 @@ export class ExecutionService {
               : run.input,
           ),
           runId: run.id,
+          secretInputs: run.secretInputs ?? [],
           stepId,
           target: structuredClone(run.target),
+          ...(run.executionContext
+            ? {
+                executionContext: {
+                  ...structuredClone(run.executionContext),
+                  results: structuredClone(results),
+                },
+              }
+            : {}),
           signal: controller.signal,
           lifecycle: structuredClone({
             phase: owner.phase,
@@ -631,11 +754,20 @@ export class ExecutionService {
     );
   }
 
-  private validate(plan: ExecutionPlan): void {
+  private validate(plan: ExecutionPlan, budget = { remaining: 4096 }): void {
     if (!plan.steps.length || plan.steps.length > 64)
       throw new Error('任务必须包含 1–64 个步骤');
     const calls = (call: ActionCall) => {
-      if (call.task) this.validate(call.task.plan);
+      if (--budget.remaining < 0)
+        throw new Error(
+          '展开后的执行计划过大，请减少目标或拆分任务（最多 4096 个调用）',
+        );
+      if (call.dispatch)
+        for (const branch of call.dispatch.branches)
+          this.validate(branch.plan, budget);
+      else if (call.deferredTask) {
+        /* 引用结构和绑定已在任务编译时校验，运行数据在调用前解析。 */
+      } else if (call.task) this.validate(call.task.plan, budget);
       else if (call.action !== 'task.skipped') this.actions.get(call.action);
       if (
         call.timeoutMs !== undefined &&

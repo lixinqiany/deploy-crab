@@ -160,6 +160,98 @@ describe('Session 执行 (e2e)', () => {
     return { child, parent, s, body };
   };
 
+  it('协作任务提交一个根 Run，跨主机汇合后只初始化一次，重启保留执行树', async () => {
+    const task = await createTask({
+      name: '协作部署',
+      definition: {
+        execution: 'orchestrated',
+        steps: [
+          { id: 'prepare', title: '准备', call: script('prepare') },
+          {
+            id: 'initialize',
+            title: '初始化',
+            call: script('initialize'),
+            placement: { kind: 'first' },
+            dependsOn: ['prepare'],
+          },
+        ],
+      },
+    });
+    const current = await session(),
+      a = await host('a'),
+      b = await host('b');
+    const roots = await submit(current.id, {
+      requestId: randomUUID(),
+      taskId: task.id,
+      taskRevisions: { [task.id]: 1 },
+      hostIds: [a, b],
+      input: {},
+      skippedSteps: [],
+      dependsOn: [],
+    });
+    expect(roots).toHaveLength(1);
+    const tree = await finished(roots[0]!.id);
+    expect(tree.run.status).toBe('succeeded');
+    expect(calls.map((call) => call.script)).toEqual([
+      'prepare',
+      'prepare',
+      'initialize',
+    ]);
+    expect(calls.at(-1)?.host).toBe(a);
+    await app.close();
+    await boot();
+    const stored = (await http().get(`/runs/${roots[0]!.id}/tree`).expect(200))
+      .body as RunTree;
+    expect(
+      stored.run.executionContext?.targets.map((target) => target.id),
+    ).toEqual([a, b]);
+    expect(stored.children).toHaveLength(2);
+  });
+
+  it('凭据引用在 SSH 时解析，接口和持久化日志不包含明文', async () => {
+    const plaintext = 'test-secret-not-for-real-use-12345';
+    const secret = (
+      await http()
+        .post('/secrets')
+        .send({ name: '测试凭据', value: plaintext })
+        .expect(201)
+    ).body as { id: string };
+    expect(
+      JSON.stringify((await http().get('/secrets').expect(200)).body),
+    ).not.toContain(plaintext);
+    const task = await createTask({
+      name: '凭据检查',
+      definition: {
+        parameters: [{ name: 'password', secret: true, required: true }],
+        steps: [{ id: 'check', title: '检查', call: script('check-secret') }],
+      },
+    });
+    const current = await session(),
+      hostId = await host('a');
+    exec.mockImplementationOnce((_target, _script, input, context) => {
+      expect(input.password).toBe(plaintext);
+      context.output('stdout', plaintext.slice(0, 10));
+      context.output('stdout', plaintext.slice(10));
+      return Promise.resolve({ exitCode: 0 as const, elapsedMs: 1 });
+    });
+    const roots = await submit(current.id, {
+      requestId: randomUUID(),
+      taskId: task.id,
+      taskRevisions: { [task.id]: 1 },
+      hostIds: [hostId],
+      input: { password: secret.id },
+      skippedSteps: [],
+      dependsOn: [],
+    });
+    const tree = await finished(roots[0]!.id);
+    expect(tree.run.status).toBe('succeeded');
+    expect(tree.run.input.password).toBe(secret.id);
+    expect(tree.run.output.map((chunk) => chunk.text).join('')).toBe(
+      '[已隐藏]',
+    );
+    expect(JSON.stringify(tree)).not.toContain(plaintext);
+  });
+
   it('按集群分组派发并去重；成员变化后拒绝陈旧预览，历史快照与幂等重试保持原范围', async () => {
     const { s, body } = await fixture();
     const a = body.hostIds[0]!;

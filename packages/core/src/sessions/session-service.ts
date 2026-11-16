@@ -25,13 +25,18 @@ import {
 import type { ExecutionService } from '../execution/execution-service';
 import type { PersistentRunStore } from '../execution/persistent-run-store';
 import { ConnectionResolver } from '../ssh/connection-resolver';
-import { compileStoredTask } from '../tasks/stored-task-planner';
+import {
+  compileStoredTask,
+  compileOrchestratedTask,
+} from '../tasks/stored-task-planner';
+import type { LocalSecretStore } from '../secrets/local-secret-store';
 
 export class SessionService {
   constructor(
     private readonly database: Database,
     private readonly execution: ExecutionService,
     private readonly store: PersistentRunStore,
+    private readonly secrets?: LocalSecretStore,
   ) {}
   list(): SessionSummary[] {
     return this.database.read((tx) =>
@@ -161,22 +166,46 @@ export class SessionService {
         throw new ConflictError(
           '集群成员或分组已变化，请重新选择执行目标，核对主机名单后再提交',
         );
-      return targetScope.hostIds.map((hostId) => {
+      const targets = targetScope.hostIds.map((hostId) => {
         const host = hosts.get(hostId);
         if (!host) throw new NotFoundError('选择的主机已不存在');
         const target = new ConnectionResolver(this.database).resolve(
           CheckHostInput.parse({ ...host, hostId }),
         );
-        return {
-          ...compileStoredTask(
-            configuration.configured,
-            target,
-            host.name,
-            request.input,
-          ),
-          targetScope,
-        };
+        return { hostId, name: host.name, target };
       });
+      for (const parameter of configuration.configured.parameters) {
+        if (!parameter.secret) continue;
+        const reference = request.input[parameter.name];
+        if (typeof reference === 'string') this.secrets?.resolve(reference);
+      }
+      if (configuration.configured.task.definition.execution === 'orchestrated')
+        return [
+          {
+            ...compileOrchestratedTask(
+              configuration.configured,
+              targets,
+              request.input,
+              targetScope.label,
+            ),
+            targetScope,
+          },
+        ];
+      const members = targets.map(({ hostId, name, target }) => ({
+        id: hostId,
+        name,
+        address: target.endpoint.address,
+      }));
+      return targets.map((host, index) => ({
+        ...compileStoredTask(
+          configuration.configured,
+          host.target,
+          host.name,
+          request.input,
+          { target: members[index]!, targets: members },
+        ),
+        targetScope,
+      }));
     });
     const result = this.execution.submitBatch(
       compiled.map(({ plan, input, targetScope }) => ({

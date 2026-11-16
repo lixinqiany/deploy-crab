@@ -41,6 +41,7 @@ import {
   resolveParameterDrafts,
 } from './parameter-editor-model';
 import { TaskParameterEditor } from './TaskParameterEditor';
+import { TaskPlacementEditor } from './TaskPlacementEditor';
 import {
   availableTaskReferences,
   callKindLabel,
@@ -99,8 +100,23 @@ export const TaskEditor = ({
     },
   };
   const steps = draft.definition.steps;
+  const needsOrchestration = [
+    ...steps.flatMap((step) => [
+      step,
+      ...Object.values(step.hooks ?? {}).flat(),
+    ]),
+    ...Object.values(draft.definition.hooks ?? {}).flat(),
+  ].some((node) => node.placement && node.placement.kind !== 'each');
   const selected = steps.find((step) => step.id === selectedId);
   const selectedIndex = steps.findIndex((step) => step.id === selectedId);
+  const ancestors = new Set<string>();
+  const visitDependency = (id: string) => {
+    if (ancestors.has(id)) return;
+    ancestors.add(id);
+    steps.find((step) => step.id === id)?.dependsOn.forEach(visitDependency);
+  };
+  selected?.dependsOn.forEach(visitDependency);
+  const resultSteps = steps.filter((step) => ancestors.has(step.id));
   const references = availableTaskReferences(tasks, editing?.id);
   const dirty =
     resolved.errors.length > 0 ||
@@ -306,6 +322,33 @@ export const TaskEditor = ({
             }
           />
         </Form.Item>
+        <Form.Item
+          label="执行方式"
+          extra={
+            needsOrchestration
+              ? '已有单节点或动态目标步骤。要切换为逐台独立执行，请先将这些步骤及钩子改为在每台主机执行。'
+              : '逐台独立适合软件安装；跨主机协作支持并行准备、等待全部就绪、单节点初始化等流程。'
+          }
+        >
+          <Select
+            aria-label="任务执行方式"
+            value={draft.definition.execution ?? 'perHost'}
+            options={[
+              {
+                value: 'perHost',
+                label: '逐台独立执行',
+                disabled: needsOrchestration,
+              },
+              { value: 'orchestrated', label: '跨主机协作执行' },
+            ]}
+            onChange={(execution: 'perHost' | 'orchestrated') =>
+              setDraft({
+                ...draft,
+                definition: { ...draft.definition, execution },
+              })
+            }
+          />
+        </Form.Item>
         <TaskParameterEditor
           parameters={parameterDrafts}
           onChange={setParameterDrafts}
@@ -453,7 +496,18 @@ export const TaskEditor = ({
                     }
                   />
                 </Form.Item>
+                {draft.definition.execution === 'orchestrated' && (
+                  <TaskPlacementEditor
+                    value={selected.placement}
+                    parameters={parameterState.parameters}
+                    steps={resultSteps}
+                    onChange={(placement) =>
+                      updateStep({ ...selected, placement })
+                    }
+                  />
+                )}
                 <TaskCallEditor
+                  resultSteps={resultSteps}
                   parameters={parameterState.parameters}
                   inputDraft={inputDraft(`steps.${selected.id}.call`)}
                   call={selected.call}
@@ -503,8 +557,12 @@ export const TaskEditor = ({
                       label: `步骤钩子 · ${Object.values(selected.hooks).flat().length}`,
                       children: (
                         <TaskHooksEditor
+                          orchestrated={
+                            draft.definition.execution === 'orchestrated'
+                          }
                           parameters={parameterState.parameters}
                           path={`steps.${selected.id}.hooks`}
+                          resultSteps={resultSteps}
                           inputDraft={inputDraft}
                           hooks={selected.hooks}
                           onChange={(hooks) =>
@@ -538,6 +596,7 @@ export const TaskEditor = ({
                     应用于整个任务。钩子失败会影响任务结果，结束时的钩子用于收尾。
                   </p>
                   <TaskHooksEditor
+                    orchestrated={draft.definition.execution === 'orchestrated'}
                     parameters={parameterState.parameters}
                     path="hooks"
                     inputDraft={inputDraft}

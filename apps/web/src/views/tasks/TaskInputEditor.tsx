@@ -8,6 +8,7 @@ import {
 } from '@deploy-crab/contracts/task-input-bindings';
 import type { Task } from '@deploy-crab/contracts/task';
 import { Button, Form, Input, Segmented, Select, Tag } from 'antd';
+import { ParameterValueInput } from './ParameterValueInput';
 import { formatParameterValue } from './parameter-editor-model';
 import {
   inputFieldDraft,
@@ -21,11 +22,13 @@ export const TaskInputEditor = ({
   mapping,
   parentParameters,
   draft,
+  resultSteps = [],
 }: {
   task: Task | undefined;
   mapping: TaskInputMapping;
   parentParameters: TaskParameter[];
   draft: InputDraft;
+  resultSteps?: { id: string; title: string }[];
 }) => {
   if (!task) return null;
   const parameters = task.definition.parameters;
@@ -89,43 +92,19 @@ export const TaskInputEditor = ({
                   { value: 'omit', label: '不传值' },
                   { value: 'value', label: '固定值' },
                   { value: 'binding', label: '绑定当前任务参数' },
+                  { value: 'result', label: '前置结果' },
+                  { value: 'context', label: '执行目标' },
                 ]}
                 onChange={(mode) => change({ mode })}
               />
-              {field.mode === 'value' &&
-                (type === 'boolean' ? (
-                  <Select
-                    aria-label={`参数 ${name}`}
-                    value={field.text || null}
-                    placeholder="请选择布尔值"
-                    options={[
-                      { value: 'true', label: '是（true）' },
-                      { value: 'false', label: '否（false）' },
-                    ]}
-                    onChange={(text: string) => change({ text })}
-                  />
-                ) : type === 'json' ? (
-                  <Input.TextArea
-                    aria-label={`参数 ${name}`}
-                    value={field.text}
-                    placeholder="请输入 JSON"
-                    className="font-mono text-xs"
-                    autoSize={{ minRows: 2, maxRows: 8 }}
-                    onChange={(event) => change({ text: event.target.value })}
-                  />
-                ) : (
-                  <Input
-                    aria-label={`参数 ${name}`}
-                    value={field.text}
-                    placeholder={
-                      type === 'number'
-                        ? '请输入数字'
-                        : '请输入固定值；空字符串也会传入'
-                    }
-                    inputMode={type === 'number' ? 'decimal' : 'text'}
-                    onChange={(event) => change({ text: event.target.value })}
-                  />
-                ))}
+              {field.mode === 'value' && (
+                <ParameterValueInput
+                  parameter={parameter}
+                  label={`参数 ${name}`}
+                  value={field.text}
+                  onChange={(text) => change({ text })}
+                />
+              )}
               {field.mode === 'binding' && (
                 <>
                   <Select
@@ -150,6 +129,38 @@ export const TaskInputEditor = ({
                       : '先解析当前任务的传入值和默认值，再传给子任务；没有值时按子任务的默认值和必填规则处理。'}
                   </span>
                 </>
+              )}
+              {field.mode === 'result' && (
+                <>
+                  <Select
+                    aria-label={`参数 ${name} 结果步骤`}
+                    value={field.sourceKey || null}
+                    placeholder="先配置步骤依赖，再选择结果来源"
+                    options={resultSteps.map((step) => ({
+                      value: step.id,
+                      label: step.title,
+                    }))}
+                    onChange={(sourceKey: string) => change({ sourceKey })}
+                  />
+                  <Input
+                    aria-label={`参数 ${name} 结果路径`}
+                    placeholder="结果路径，例如 primaryHostId；留空取整个结果"
+                    value={field.text}
+                    onChange={(event) => change({ text: event.target.value })}
+                  />
+                </>
+              )}
+              {field.mode === 'context' && (
+                <Select
+                  aria-label={`参数 ${name} 上下文`}
+                  value={field.sourceKey || null}
+                  placeholder="选择目标信息"
+                  options={[
+                    { value: 'target', label: '当前主机信息' },
+                    { value: 'targets', label: '本次所有主机信息' },
+                  ]}
+                  onChange={(sourceKey: string) => change({ sourceKey })}
+                />
               )}
               {field.mode === 'omit' && !required && (
                 <span className="break-all text-xs text-sand-9">

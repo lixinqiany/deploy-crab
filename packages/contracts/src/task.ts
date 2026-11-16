@@ -3,6 +3,7 @@ import { auditFields, Description, DisplayName, ResourceId } from './fields';
 import { SshScriptInput } from './ssh-script';
 import { TaskInput, TaskParameters, TaskParameterName } from './task-input';
 import { TaskInputBindings } from './task-input-bindings';
+import { TaskPlacement } from './task-placement';
 
 export const TASK_ACTIONS = [
   {
@@ -86,6 +87,7 @@ export const TaskHook = z
     key: NodeKey,
     title: DisplayName,
     call: TaskCall,
+    placement: TaskPlacement.optional(),
     timeoutMs: Timeout.default(30_000),
   })
   .strict();
@@ -124,6 +126,7 @@ export const TaskStep = z
     id: NodeKey,
     title: DisplayName,
     call: TaskCall,
+    placement: TaskPlacement.optional(),
     dependsOn: z.array(NodeKey).max(63).default([]),
     // 声明 Session 是否允许用户跳过，不代表本次已经选择跳过。
     skippable: z.boolean().default(false),
@@ -137,6 +140,7 @@ export type TaskStep = z.output<typeof TaskStep>;
 export const TaskDefinition = z
   .object({
     schemaVersion: z.literal(1).default(1),
+    execution: z.enum(['perHost', 'orchestrated']).optional(),
     parameters: TaskParameters.default([]),
     steps: z
       .array(TaskStep)
@@ -146,6 +150,108 @@ export const TaskDefinition = z
   })
   .strict()
   .superRefine((definition, ctx) => {
+    const ancestors = (id: string, seen = new Set<string>()): Set<string> => {
+      if (seen.has(id)) return seen;
+      seen.add(id);
+      for (const dep of definition.steps.find((step) => step.id === id)
+        ?.dependsOn ?? [])
+        ancestors(dep, seen);
+      return seen;
+    };
+    const checkCall = (call: TaskCall, ownerId?: string) => {
+      if (call.kind !== 'task') return;
+      for (const binding of Object.values(call.inputBindings ?? {})) {
+        if (binding.from !== 'stepResult') continue;
+        if (
+          !ownerId ||
+          binding.stepId === ownerId ||
+          !ancestors(ownerId).has(binding.stepId)
+        )
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              '读取步骤结果必须显式依赖该步骤；任务钩子不支持步骤结果绑定',
+          });
+      }
+    };
+    for (const step of definition.steps) {
+      const placement = step.placement;
+      if (
+        definition.execution !== 'orchestrated' &&
+        placement &&
+        placement.kind !== 'each'
+      )
+        ctx.addIssue({
+          code: 'custom',
+          message: '选择单个目标或动态目标需要启用跨主机协作执行',
+        });
+      if (
+        placement?.kind === 'input' &&
+        !definition.parameters.some(
+          (p) => p.name === placement.key && p.type === 'string',
+        )
+      )
+        ctx.addIssue({
+          code: 'custom',
+          message: '执行位置需要绑定已声明的文本参数（主机 ID）',
+        });
+      if (
+        placement?.kind === 'result' &&
+        (placement.stepId === step.id ||
+          !ancestors(step.id).has(placement.stepId))
+      )
+        ctx.addIssue({
+          code: 'custom',
+          message: '按结果选择主机必须显式依赖提供结果的步骤',
+        });
+      checkCall(step.call, step.id);
+      for (const hook of Object.values(step.hooks).flat()) {
+        checkCall(hook.call, step.id);
+        if (
+          hook.placement?.kind === 'result' &&
+          (hook.placement.stepId === step.id ||
+            !ancestors(step.id).has(hook.placement.stepId))
+        )
+          ctx.addIssue({
+            code: 'custom',
+            message: '钩子目标必须来自依赖步骤的结果',
+          });
+      }
+    }
+    for (const hook of Object.values(definition.hooks).flat()) {
+      checkCall(hook.call);
+      if (hook.placement?.kind === 'result')
+        ctx.addIssue({
+          code: 'custom',
+          message: '任务钩子请使用固定的执行位置',
+        });
+    }
+    for (const hook of [
+      ...Object.values(definition.hooks).flat(),
+      ...definition.steps.flatMap((step) => Object.values(step.hooks).flat()),
+    ]) {
+      if (hook.placement?.kind === 'input') {
+        const key = hook.placement.key;
+        if (
+          !definition.parameters.some(
+            (p) => p.name === key && p.type === 'string',
+          )
+        )
+          ctx.addIssue({
+            code: 'custom',
+            message: '钩子执行位置需要绑定已声明的文本参数',
+          });
+      }
+      if (
+        definition.execution !== 'orchestrated' &&
+        hook.placement &&
+        hook.placement.kind !== 'each'
+      )
+        ctx.addIssue({
+          code: 'custom',
+          message: '钩子指定执行位置需要启用跨主机协作执行',
+        });
+    }
     for (const call of taskCalls(definition)) {
       if (call.kind !== 'action' || call.action !== 'ssh.exec') continue;
       for (const name of call.usesInputs ?? [])

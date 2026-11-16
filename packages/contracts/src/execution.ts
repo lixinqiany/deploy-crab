@@ -1,5 +1,6 @@
 import type { TaskInput } from './task-input';
 import type { TargetSnapshot } from './execution-target';
+import type { TaskExecutionContext } from './task-placement';
 
 /** 临时连接检查使用内存，Session 的执行记录持久化。 */
 export type ExecutionStatus =
@@ -61,6 +62,8 @@ export interface ExecutionOutput {
 }
 
 export interface Run extends ExecutionState {
+  executionContext?: TaskExecutionContext;
+  secretInputs?: string[];
   id: string;
   sessionId: string | null;
   source: string;

@@ -183,6 +183,20 @@ const LifecycleTree = ({ tree }: { tree: RunTree }) => {
                 {hooks(step.hooks.filter((hook) => hook.phase === 'before'))}
               </div>
             )}
+            {!nested &&
+              step.result !== null &&
+              step.action === 'ssh.exec' &&
+              typeof step.input === 'object' &&
+              step.input !== null &&
+              'output' in step.input &&
+              step.input.output === 'json' && (
+                <div className="my-3 rounded-xl border border-sand-4 bg-sand-2 p-4">
+                  <div className="mb-2 text-sm font-medium">步骤结果</div>
+                  <pre className="m-0 max-h-80 overflow-auto whitespace-pre-wrap break-all text-sm">
+                    {JSON.stringify(step.result, null, 2)}
+                  </pre>
+                </div>
+              )}
             {(!nested || entries.length > 0) && (
               <ExecutionOutput
                 output={entries}

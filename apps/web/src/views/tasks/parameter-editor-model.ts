@@ -15,6 +15,18 @@ export interface ParameterDraft {
   required: boolean;
   hasDefault: boolean;
   defaultText: string;
+  choices?: {
+    key: string;
+    value: string;
+    label: string;
+    description: string;
+  }[];
+  minimum?: number | undefined;
+  maximum?: number | undefined;
+  secret?: boolean;
+  targetFields?:
+    | (NonNullable<TaskParameter['targetFields']>[number] & { key: string })[]
+    | undefined;
 }
 
 export const formatParameterValue = (
@@ -54,6 +66,20 @@ export const parameterDraft = (parameter?: TaskParameter): ParameterDraft => ({
   description: parameter?.description ?? '',
   type: parameter?.type ?? 'string',
   required: parameter?.required ?? false,
+  choices:
+    parameter?.options?.map((option) => ({
+      key: crypto.randomUUID(),
+      value: formatParameterValue(parameter.type, option.value),
+      label: option.label,
+      description: option.description ?? '',
+    })) ?? [],
+  minimum: parameter?.minimum,
+  maximum: parameter?.maximum,
+  secret: parameter?.secret ?? false,
+  targetFields: parameter?.targetFields?.map((field) => ({
+    ...field,
+    key: crypto.randomUUID(),
+  })),
   hasDefault: parameter?.defaultValue !== undefined,
   defaultText:
     parameter?.defaultValue === undefined
@@ -72,6 +98,33 @@ export function resolveParameterDrafts(drafts: ParameterDraft[]) {
       type,
       required,
     };
+    if (draft.secret) parameter.secret = true;
+    if (draft.targetFields?.length)
+      parameter.targetFields = draft.targetFields.map(
+        ({ key: _key, ...field }) => field,
+      );
+    if (type === 'number') {
+      if (draft.minimum !== undefined) parameter.minimum = draft.minimum;
+      if (draft.maximum !== undefined) parameter.maximum = draft.maximum;
+    }
+    if (draft.choices?.length) {
+      parameter.options = [];
+      for (const option of draft.choices) {
+        const parsed = parseParameterValue(type, option.value);
+        if (
+          parsed.error ||
+          !('value' in parsed) ||
+          !['string', 'number', 'boolean'].includes(typeof parsed.value)
+        )
+          errors.push(`参数 ${index + 1}：选项值与类型不匹配`);
+        else
+          parameter.options.push({
+            value: parsed.value as string | number | boolean,
+            label: option.label,
+            description: option.description,
+          });
+      }
+    }
     if (draft.hasDefault && !required) {
       const parsed = parseParameterValue(type, draft.defaultText);
       if (parsed.error !== null)
@@ -97,10 +150,13 @@ export const taskInputExample = (parameters: TaskParameter[]): string =>
     'import json, os',
     "inputs = json.loads(os.environ.get('DEPLOY_CRAB_INPUT', '{}'))",
     '',
-    ...parameters.map((parameter) =>
-      parameter.required
-        ? `print(inputs[${JSON.stringify(parameter.name)}])`
-        : `print(inputs.get(${JSON.stringify(parameter.name)}))`,
-    ),
+    ...parameters.map((parameter) => {
+      const access = parameter.required
+        ? `inputs[${JSON.stringify(parameter.name)}]`
+        : `inputs.get(${JSON.stringify(parameter.name)})`;
+      return parameter.secret
+        ? `value_${parameter.name} = ${access}  # 凭据在执行时解析为明文，请勿打印`
+        : `print(${access})`;
+    }),
     'PY',
   ].join('\n');

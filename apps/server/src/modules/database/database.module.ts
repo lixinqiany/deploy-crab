@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LocalSecretStore } from '@deploy-crab/core/secrets/local-secret-store';
 import {
   Database,
   DATABASE_FILENAME,
@@ -32,6 +33,10 @@ export class DatabaseModule implements OnApplicationShutdown {
       global: true,
       providers: [
         {
+          provide: LocalSecretStore,
+          useFactory: () => new LocalSecretStore(dataDirectory),
+        },
+        {
           provide: Database,
           useFactory: () =>
             new Database(
@@ -40,7 +45,7 @@ export class DatabaseModule implements OnApplicationShutdown {
             ),
         },
       ],
-      exports: [Database],
+      exports: [Database, LocalSecretStore],
     };
   }
 

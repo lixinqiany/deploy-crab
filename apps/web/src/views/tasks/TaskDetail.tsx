@@ -46,9 +46,21 @@ const CallPreview = ({
         )}
         {Object.entries(call.inputBindings ?? {}).map(([name, binding]) => (
           <p key={name} className="mb-0 mt-2 break-all text-xs text-sand-11">
-            <code>{name}</code> ← 当前任务参数 <code>{binding.key}</code>
+            <code>{name}</code> ←{' '}
+            {binding.from === 'stepResult'
+              ? '前置步骤结果'
+              : binding.from === 'context'
+                ? '执行上下文'
+                : '当前任务参数'}{' '}
+            <code>
+              {binding.from === 'stepResult'
+                ? `${binding.stepId}.${binding.path.join('.')}`
+                : binding.key}
+            </code>
             <span className="ml-2 text-sand-9">
-              未提供时按子任务默认值和必填规则处理
+              {binding.from === 'taskInput'
+                ? '未提供时按子任务默认值和必填规则处理'
+                : '调用前解析并校验，结果缺失会阻止执行'}
             </span>
           </p>
         ))}
@@ -140,6 +152,17 @@ export const TaskDetail = ({
               {task.name}
             </h2>
             <Tag>版本 {task.revision}</Tag>
+            <Tag
+              color={
+                task.definition.execution === 'orchestrated'
+                  ? 'blue'
+                  : 'default'
+              }
+            >
+              {task.definition.execution === 'orchestrated'
+                ? '跨主机协作'
+                : '逐台独立'}
+            </Tag>
           </div>
           <span className="text-xs text-sand-9">
             {task.definition.steps.length} 个步骤 · 更新于{' '}
@@ -218,6 +241,16 @@ export const TaskDetail = ({
                     {parameter.description}
                   </p>
                 )}
+                {parameter.secret && <Tag>凭据引用</Tag>}
+                {parameter.targetFields && <Tag>按主机填写</Tag>}
+                {parameter.options?.map((option) => (
+                  <p
+                    key={String(option.value)}
+                    className="my-1 text-xs text-sand-11"
+                  >
+                    {option.label}：{option.description || String(option.value)}
+                  </p>
+                ))}
                 {parameter.defaultValue !== undefined && (
                   <p className="my-1 break-all text-xs text-sand-9">
                     默认值：

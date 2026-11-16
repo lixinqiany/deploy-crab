@@ -8,6 +8,7 @@ export const SshScriptInput = z
       .max(16_000, '脚本最多 16000 个字符')
       .refine((s) => s.trim().length > 0, '请填写脚本'),
     shell: z.enum(['bash', 'sh']).default('bash'),
+    output: z.enum(['text', 'json']).optional(),
     cwd: z
       .string()
       .trim()

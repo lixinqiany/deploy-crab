@@ -5,6 +5,7 @@ import { PersistentRunStore } from '@deploy-crab/core/execution/persistent-run-s
 import { SessionService } from '@deploy-crab/core/sessions/session-service';
 import { ExecutionModule } from '../execution/execution.module';
 import { SessionsController } from './sessions.controller';
+import { LocalSecretStore } from '@deploy-crab/core/secrets/local-secret-store';
 
 @Module({
   imports: [ExecutionModule],
@@ -16,8 +17,14 @@ import { SessionsController } from './sessions.controller';
         database: Database,
         execution: ExecutionService,
         store: PersistentRunStore,
-      ) => new SessionService(database, execution, store),
-      inject: [Database, ExecutionService, PersistentRunStore],
+        secrets: LocalSecretStore,
+      ) => new SessionService(database, execution, store, secrets),
+      inject: [
+        Database,
+        ExecutionService,
+        PersistentRunStore,
+        LocalSecretStore,
+      ],
     },
   ],
 })

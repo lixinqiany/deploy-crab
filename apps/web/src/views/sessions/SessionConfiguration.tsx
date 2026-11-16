@@ -7,7 +7,10 @@ import {
   TASK_HOOK_LABELS,
   TASK_HOOK_PHASES,
 } from '@deploy-crab/contracts/task';
-import { Button, Checkbox, Form, Input, Select, Tag } from 'antd';
+import { Button, Checkbox, Form, Tag } from 'antd';
+import { ParameterValueInput } from '../tasks/ParameterValueInput';
+import { TargetFieldsInput } from '../tasks/TargetFieldsInput';
+import type { TaskTargetInfo } from '@deploy-crab/contracts/task-placement';
 import { formatParameterValue } from '../tasks/parameter-editor-model';
 
 export const SessionParameterFields = ({
@@ -15,11 +18,13 @@ export const SessionParameterFields = ({
   fields,
   errors,
   onChange,
+  targets = [],
 }: {
   usage: ParameterUsage[];
   fields: Record<string, string>;
   errors: Record<string, string>;
   onChange: (fields: Record<string, string>) => void;
+  targets?: TaskTargetInfo[];
 }) => {
   const active = usage.filter((item) => item.active);
   const inactive = usage.filter((item) => !item.active);
@@ -89,30 +94,19 @@ export const SessionParameterFields = ({
               </Checkbox>
             )}
             {enabled ? (
-              type === 'boolean' ? (
-                <Select
-                  aria-label={`执行参数 ${name}`}
-                  value={fields[name] ?? null}
-                  options={[
-                    { value: 'true', label: '是（true）' },
-                    { value: 'false', label: '否（false）' },
-                  ]}
-                  onChange={(value: string) => update(name, value)}
-                />
-              ) : type === 'json' ? (
-                <Input.TextArea
-                  aria-label={`执行参数 ${name}`}
+              parameter.targetFields ? (
+                <TargetFieldsInput
+                  parameter={parameter}
+                  targets={targets}
                   value={fields[name] ?? ''}
-                  className="font-mono"
-                  autoSize={{ minRows: 2, maxRows: 6 }}
-                  onChange={(event) => update(name, event.target.value)}
+                  onChange={(value) => update(name, value)}
                 />
               ) : (
-                <Input
-                  aria-label={`执行参数 ${name}`}
+                <ParameterValueInput
+                  parameter={parameter}
+                  label={`执行参数 ${name}`}
                   value={fields[name] ?? ''}
-                  inputMode={type === 'number' ? 'decimal' : 'text'}
-                  onChange={(event) => update(name, event.target.value)}
+                  onChange={(value) => update(name, value)}
                 />
               )
             ) : (

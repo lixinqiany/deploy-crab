@@ -15,6 +15,7 @@ interface Props {
   compact?: boolean;
   inputDraft: InputDraft;
   parameters: TaskParameter[];
+  resultSteps?: { id: string; title: string }[];
 }
 
 export const TaskCallEditor = ({
@@ -25,6 +26,7 @@ export const TaskCallEditor = ({
   compact = false,
   inputDraft,
   parameters,
+  resultSteps = [],
 }: Props) => (
   <>
     <Form.Item label="调用方式">
@@ -67,6 +69,7 @@ export const TaskCallEditor = ({
           mapping={call}
           parentParameters={parameters}
           draft={inputDraft}
+          resultSteps={resultSteps}
         />
       </>
     ) : call.action === 'ssh.probe' ? (
@@ -116,6 +119,22 @@ export const TaskCallEditor = ({
             />
           </Form.Item>
         </div>
+        <Form.Item
+          label="脚本输出"
+          extra="JSON 模式将 stdout 保存为步骤结果供后续绑定；日志请写到 stderr。"
+        >
+          <Select
+            aria-label="脚本输出格式"
+            value={call.input.output ?? 'text'}
+            options={[
+              { value: 'text', label: '终端日志' },
+              { value: 'json', label: '结构化 JSON 结果' },
+            ]}
+            onChange={(output: 'text' | 'json') =>
+              onChange({ ...call, input: { ...call.input, output } })
+            }
+          />
+        </Form.Item>
         <Form.Item
           label="脚本内容"
           extra="通过 DEPLOY_CRAB_INPUT 读取任务参数，展开下方说明可查看当前字段的读取示例。"

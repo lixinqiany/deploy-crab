@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { ConnectionTarget } from '@deploy-crab/contracts/connection';
 import { isExecutionFinished } from '@deploy-crab/contracts/execution';
 import type { TaskInput } from '@deploy-crab/contracts/task-input';
@@ -136,6 +137,96 @@ esac
     expect(done.output.map((chunk) => chunk.text).join('')).toContain(
       'Permission denied',
     );
+  });
+
+  it('结构化结果和执行上下文穿过真实 Shell，凭据仅在传输时解引用并遮盖输出', async () => {
+    const secretId = randomUUID(),
+      password = 'test-password-with-quote"12345';
+    await service.close();
+    service = new ExecutionService(
+      new ActionRegistry().register(
+        sshExecAction(new OpenSshRunner(), (id) => {
+          expect(id).toBe(secretId);
+          return password;
+        }),
+      ),
+      new MemoryRunStore(),
+    );
+    const host = {
+      id: randomUUID(),
+      name: "host ' $(printf unexpected)",
+      address: 'mongo.test',
+    };
+    const submitted = service.submit(
+      {
+        task: 'json-result',
+        target,
+        context: { target: host, targets: [host] },
+        parameters: TaskParameters.parse([
+          { name: 'password', secret: true, required: true },
+        ]),
+        steps: [
+          {
+            id: 'script',
+            title: 'JSON',
+            action: 'ssh.exec',
+            input: {
+              output: 'json',
+              script: `python3 - <<'PY'
+import json,os,sys
+p=json.loads(os.environ['DEPLOY_CRAB_INPUT'])
+assert p['password']==${JSON.stringify(password)}
+print(p['password'],file=sys.stderr)
+print(json.dumps({'context':json.loads(os.environ['DEPLOY_CRAB_CONTEXT']),'password':p['password'],'enabled':False}))
+PY`,
+            },
+          },
+        ],
+      },
+      { input: { password: secretId } },
+    );
+    await vi.waitFor(() =>
+      expect(isExecutionFinished(service.get(submitted.id).status)).toBe(true),
+    );
+    const completed = service.get(submitted.id);
+    expect(completed.status).toBe('succeeded');
+    expect(completed.steps[0]!.result).toEqual({
+      context: { target: host, targets: [host], results: {} },
+      password: '[已隐藏]',
+      enabled: false,
+    });
+    expect(completed.output.every((chunk) => chunk.stream === 'stderr')).toBe(
+      true,
+    );
+    expect(completed.input.password).toBe(secretId);
+    expect(JSON.stringify(completed)).not.toContain(password);
+    expect(completed.output.map((chunk) => chunk.text).join('')).toBe(
+      '[已隐藏]\n',
+    );
+  });
+
+  it.each([
+    ['非 JSON 输出', 'printf not-json'],
+    ['超过结果上限', 'python3 -c \'import json;print(json.dumps("x"*16001))\''],
+  ])('%s 不会被标记为成功', async (_, script) => {
+    const submitted = service.submit({
+      task: 'invalid-json',
+      target,
+      steps: [
+        {
+          id: 'script',
+          title: 'JSON',
+          action: 'ssh.exec',
+          input: { script, output: 'json' },
+        },
+      ],
+    });
+    await vi.waitFor(() =>
+      expect(isExecutionFinished(service.get(submitted.id).status)).toBe(true),
+    );
+    const completed = service.get(submitted.id);
+    expect(completed.status).toBe('failed');
+    expect(completed.steps[0]!.errors[0]!.code).toBe('invalid_output');
   });
 
   it('取消脚本后等待本地进程关闭并保留取消状态', async () => {

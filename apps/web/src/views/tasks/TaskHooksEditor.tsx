@@ -11,6 +11,7 @@ import { TaskCallEditor } from './TaskCallEditor';
 import { newCall, nodeKey } from './task-editor-model';
 import type { InputDraft } from './task-input-model';
 import type { TaskParameter } from '@deploy-crab/contracts/task-input';
+import { TaskPlacementEditor } from './TaskPlacementEditor';
 
 interface Props {
   hooks: TaskHooks;
@@ -20,6 +21,8 @@ interface Props {
   path: string;
   inputDraft: (path: string) => InputDraft;
   parameters: TaskParameter[];
+  orchestrated?: boolean;
+  resultSteps?: { id: string; title: string }[];
 }
 export const TaskHooksEditor = ({
   hooks,
@@ -29,6 +32,8 @@ export const TaskHooksEditor = ({
   path,
   inputDraft,
   parameters,
+  orchestrated = false,
+  resultSteps = [],
 }: Props) => (
   <Collapse
     size="small"
@@ -68,6 +73,7 @@ export const TaskHooksEditor = ({
                   />
                 </div>
                 <TaskCallEditor
+                  resultSteps={resultSteps}
                   compact
                   call={hook.call}
                   onChange={(call) => update({ ...hook, call })}
@@ -76,6 +82,14 @@ export const TaskHooksEditor = ({
                   inputDraft={inputDraft(`${path}.${phase}.${hook.key}`)}
                   parameters={parameters}
                 />
+                {orchestrated && (
+                  <TaskPlacementEditor
+                    value={hook.placement}
+                    parameters={parameters}
+                    steps={resultSteps}
+                    onChange={(placement) => update({ ...hook, placement })}
+                  />
+                )}
                 <Form.Item label="钩子超时（秒）" className="mb-0">
                   <InputNumber
                     aria-label="钩子超时秒数"

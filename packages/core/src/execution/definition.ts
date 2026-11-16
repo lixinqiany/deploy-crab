@@ -7,11 +7,20 @@ import type {
   TaskInput,
   TaskParameter,
 } from '@deploy-crab/contracts/task-input';
+import type {
+  TaskExecutionContext,
+  TaskPlacement,
+} from '@deploy-crab/contracts/task-placement';
+import type { ConfiguredTask } from '@deploy-crab/contracts/task-configuration';
+import type { TaskInputMapping } from '@deploy-crab/contracts/task-input-bindings';
+import type { ConnectionTarget } from '@deploy-crab/contracts/connection';
 
 export interface ActionContext {
   runId: string;
   stepId: string | null;
   target: unknown;
+  executionContext?: TaskExecutionContext;
+  secretInputs?: string[];
   /** 本次任务调用的数据快照；不同于 Action 自身的配置 input。 */
   taskInput: TaskInput;
   signal: AbortSignal;
@@ -35,8 +44,20 @@ export interface Action {
 export interface ActionCall {
   action: string;
   input?: unknown;
-  timeoutMs?: number;
+  timeoutMs?: number | undefined;
   task?: { plan: ExecutionPlan; input: TaskInput };
+  dispatch?: {
+    placement: TaskPlacement;
+    branches: { hostId: string; plan: ExecutionPlan; input: TaskInput }[];
+  };
+  deferredTask?: {
+    config: ConfiguredTask;
+    mapping: TaskInputMapping;
+    parameters: TaskParameter[];
+    target: ConnectionTarget;
+    targetName: string;
+    context: TaskExecutionContext;
+  };
   usesInputs?: string[];
 }
 
@@ -56,6 +77,7 @@ export interface StepDefinition extends ActionCall {
 }
 
 export interface ExecutionPlan {
+  context?: TaskExecutionContext;
   parameters?: TaskParameter[];
   task: string;
   target: unknown;

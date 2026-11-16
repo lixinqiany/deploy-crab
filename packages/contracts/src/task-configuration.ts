@@ -97,6 +97,7 @@ export function configureTask(
           for (const [name, binding] of Object.entries(
             definition.inputBindings ?? {},
           )) {
+            if (binding.from !== 'taskInput') continue;
             const usage = child.usage.find(
               (item) => item.parameter.name === name,
             );
@@ -126,15 +127,23 @@ export function configureTask(
         finally: [],
       };
       for (const phase of TASK_HOOK_PHASES)
-        configured[phase] = definitions[phase].map((hook) => ({
-          definition: hook,
-          call: call(
-            hook.call,
-            `${prefix}.${phase}.${hook.key}`,
-            `${task.name} / ${hook.title}`,
-            disabled,
-          ),
-        }));
+        configured[phase] = definitions[phase].map((hook) => {
+          if (!disabled && hook.placement?.kind === 'input')
+            use(hook.placement.key, {
+              path: `${prefix}.${phase}.${hook.key}`,
+              title: hook.title,
+              required: true,
+            });
+          return {
+            definition: hook,
+            call: call(
+              hook.call,
+              `${prefix}.${phase}.${hook.key}`,
+              `${task.name} / ${hook.title}`,
+              disabled,
+            ),
+          };
+        });
       return configured;
     };
     const steps = task.definition.steps.map((step): ConfiguredStep => {
@@ -142,6 +151,12 @@ export function configureTask(
       if (step.skippable) allowed.add(stepPath);
       const selectedSkip = skipped.has(stepPath);
       const disabled = inactive || selectedSkip;
+      if (!disabled && step.placement?.kind === 'input')
+        use(step.placement.key, {
+          path: stepPath,
+          title: step.title,
+          required: true,
+        });
       return {
         definition: step,
         path: stepPath,

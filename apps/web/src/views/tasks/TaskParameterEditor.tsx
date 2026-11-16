@@ -9,6 +9,7 @@ import {
   parseParameterValue,
   type ParameterDraft,
 } from './parameter-editor-model';
+import { ParameterConstraintsEditor } from './ParameterConstraintsEditor';
 
 export const TaskParameterEditor = ({
   parameters,
@@ -102,7 +103,16 @@ export const TaskParameterEditor = ({
                     label: PARAMETER_TYPE_LABELS[type],
                   }))}
                   onChange={(type: ParameterDraft['type']) =>
-                    update({ type, hasDefault: false, defaultText: '' })
+                    update({
+                      type,
+                      hasDefault: false,
+                      defaultText: '',
+                      choices: [],
+                      minimum: undefined,
+                      maximum: undefined,
+                      secret: false,
+                      targetFields: undefined,
+                    })
                   }
                 />
               </Form.Item>
@@ -134,7 +144,173 @@ export const TaskParameterEditor = ({
                 }
               />
             </Form.Item>
-            {!parameter.required && (
+            {parameter.type === 'json' && (
+              <>
+                <Form.Item
+                  label="按执行主机填写"
+                  extra="根据 Session 中选中的主机生成字段卡片；脚本收到包含 hostId 的 JSON 数组。"
+                >
+                  <Switch
+                    checked={!!parameter.targetFields?.length}
+                    onChange={(enabled) =>
+                      update({
+                        targetFields: enabled
+                          ? [
+                              {
+                                key: crypto.randomUUID(),
+                                name: 'hostname',
+                                title: '主机名',
+                                type: 'string',
+                              },
+                            ]
+                          : undefined,
+                      })
+                    }
+                  />
+                </Form.Item>
+                {parameter.targetFields?.map((field, fieldIndex) => (
+                  <div
+                    key={field.key}
+                    className="mb-3 flex flex-wrap gap-2 rounded-lg border border-sand-4 p-3"
+                  >
+                    <Input
+                      className="!w-32"
+                      placeholder="字段名"
+                      value={field.name}
+                      onChange={(event) =>
+                        update({
+                          targetFields: parameter.targetFields!.map(
+                            (item, i) =>
+                              i === fieldIndex
+                                ? { ...item, name: event.target.value }
+                                : item,
+                          ),
+                        })
+                      }
+                    />
+                    <Input
+                      className="!w-36"
+                      placeholder="显示名称"
+                      value={field.title}
+                      onChange={(event) =>
+                        update({
+                          targetFields: parameter.targetFields!.map(
+                            (item, i) =>
+                              i === fieldIndex
+                                ? { ...item, title: event.target.value }
+                                : item,
+                          ),
+                        })
+                      }
+                    />
+                    <Select
+                      value={field.type}
+                      options={[
+                        { value: 'string', label: '文本' },
+                        { value: 'number', label: '数字' },
+                      ]}
+                      onChange={(type: 'string' | 'number') =>
+                        update({
+                          targetFields: parameter.targetFields!.map(
+                            (item, i) =>
+                              i === fieldIndex
+                                ? {
+                                    key: item.key,
+                                    name: item.name,
+                                    title: item.title,
+                                    type,
+                                  }
+                                : item,
+                          ),
+                        })
+                      }
+                    />
+                    <Input
+                      className="!w-36"
+                      placeholder="默认值（可选）"
+                      value={String(field.defaultValue ?? '')}
+                      onChange={(event) =>
+                        update({
+                          targetFields: parameter.targetFields!.map(
+                            (item, i) => {
+                              if (i !== fieldIndex) return item;
+                              const { defaultValue: _default, ...rest } = item;
+                              return event.target.value
+                                ? {
+                                    ...rest,
+                                    defaultValue:
+                                      item.type === 'number'
+                                        ? Number(event.target.value)
+                                        : event.target.value,
+                                  }
+                                : rest;
+                            },
+                          ),
+                        })
+                      }
+                    />
+                    <Button
+                      aria-label={`删除主机字段 ${fieldIndex + 1}`}
+                      icon={<DeleteOutlined />}
+                      onClick={() =>
+                        update({
+                          targetFields: parameter.targetFields!.filter(
+                            (_, i) => i !== fieldIndex,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+                {!!parameter.targetFields?.length && (
+                  <Button
+                    className="mb-4"
+                    size="small"
+                    disabled={parameter.targetFields.length >= 8}
+                    onClick={() =>
+                      update({
+                        targetFields: [
+                          ...parameter.targetFields!,
+                          {
+                            key: crypto.randomUUID(),
+                            name: '',
+                            title: '',
+                            type: 'string',
+                          },
+                        ],
+                      })
+                    }
+                  >
+                    添加主机字段
+                  </Button>
+                )}
+              </>
+            )}
+            {parameter.type === 'string' && (
+              <Form.Item
+                label="凭据引用"
+                extra="开启后，调用者选择已保存的密码或密钥；实际内容仅在 SSH 执行时注入。"
+              >
+                <Switch
+                  checked={parameter.secret ?? false}
+                  onChange={(secret) =>
+                    update({
+                      secret,
+                      hasDefault: false,
+                      defaultText: '',
+                      choices: [],
+                    })
+                  }
+                />
+              </Form.Item>
+            )}
+            {!parameter.secret && (
+              <ParameterConstraintsEditor
+                parameter={parameter}
+                update={update}
+              />
+            )}
+            {!parameter.required && !parameter.secret && (
               <>
                 <Checkbox
                   className="mb-2"

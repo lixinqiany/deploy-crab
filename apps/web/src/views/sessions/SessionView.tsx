@@ -555,6 +555,13 @@ const SessionWorkspace = ({
             <>
               <div className="mb-6">
                 <SessionParameterFields
+                  targets={(hosts.data ?? [])
+                    .filter((host) => draft.hostIds.includes(host.id))
+                    .map((host) => ({
+                      id: host.id,
+                      name: host.name,
+                      address: host.privateAddress ?? host.publicAddress ?? '',
+                    }))}
                   usage={configuration.value.configured.usage}
                   fields={draft.fields}
                   errors={resolved.errors}

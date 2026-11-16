@@ -8,6 +8,7 @@ import { OpenSshRunner } from '@deploy-crab/core/ssh/open-ssh-runner';
 import { SshRunner } from '@deploy-crab/core/ssh/ssh-runner';
 import { Inject, Module, type OnModuleDestroy } from '@nestjs/common';
 import { ExecutionController } from './execution.controller';
+import { LocalSecretStore } from '@deploy-crab/core/secrets/local-secret-store';
 
 @Module({
   controllers: [ExecutionController],
@@ -20,14 +21,18 @@ import { ExecutionController } from './execution.controller';
     },
     {
       provide: ExecutionService,
-      useFactory: (runner: SshRunner, store: PersistentRunStore) =>
+      useFactory: (
+        runner: SshRunner,
+        store: PersistentRunStore,
+        secrets: LocalSecretStore,
+      ) =>
         new ExecutionService(
           new ActionRegistry()
             .register(sshProbeAction(runner))
-            .register(sshExecAction(runner)),
+            .register(sshExecAction(runner, (id) => secrets.resolve(id))),
           store,
         ),
-      inject: [SshRunner, PersistentRunStore],
+      inject: [SshRunner, PersistentRunStore, LocalSecretStore],
     },
   ],
   exports: [ExecutionService, PersistentRunStore],

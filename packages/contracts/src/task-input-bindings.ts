@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ResultPath, readResultPath } from './task-placement';
 import {
   TaskParameterName,
   resolveTaskInput,
@@ -11,7 +12,24 @@ import {
 export const TaskInputBindings = z
   .record(
     TaskParameterName,
-    z.object({ from: z.literal('taskInput'), key: TaskParameterName }).strict(),
+    z.discriminatedUnion('from', [
+      z
+        .object({ from: z.literal('taskInput'), key: TaskParameterName })
+        .strict(),
+      z
+        .object({
+          from: z.literal('stepResult'),
+          stepId: z.string().min(1).max(64),
+          path: ResultPath,
+        })
+        .strict(),
+      z
+        .object({
+          from: z.literal('context'),
+          key: z.enum(['target', 'targets']),
+        })
+        .strict(),
+    ]),
   )
   .refine(
     (bindings) => Object.keys(bindings).length <= 32,
@@ -27,7 +45,9 @@ export interface TaskInputMapping {
 export const canBindTaskParameter = (
   source: TaskParameter,
   target: TaskParameter,
-): boolean => target.type === 'json' || source.type === target.type;
+): boolean =>
+  !!source.secret === !!target.secret &&
+  (target.type === 'json' || source.type === target.type);
 
 /** 保存定义时只校验映射；绑定值尚未提供，必填校验留到实际调用时。 */
 export function validateTaskInputMapping(
@@ -49,8 +69,12 @@ export function validateTaskInputMapping(
     if (mapping.input?.[name] !== undefined)
       issues.push({ name, message: `参数「${name}」不能同时设置固定值和绑定` });
     const target = childParameters.find((p) => p.name === name);
+    if (!target) {
+      issues.push({ name, message: `未声明参数「${name}」` });
+      continue;
+    }
+    if (binding.from !== 'taskInput') continue;
     const source = parentParameters.find((p) => p.name === binding.key);
-    if (!target) issues.push({ name, message: `未声明参数「${name}」` });
     if (!source)
       issues.push({ name, message: `当前任务未声明参数「${binding.key}」` });
     if (source && target && !canBindTaskParameter(source, target))
@@ -63,11 +87,9 @@ export function validateTaskInputMapping(
   const literalParameters = childParameters.map((parameter) => {
     if (!bindings[parameter.name]) return parameter;
     return {
-      name: parameter.name,
-      title: parameter.title,
-      description: parameter.description,
-      type: parameter.type,
+      ...parameter,
       required: false,
+      defaultValue: undefined,
     };
   });
   issues.push(...resolveTaskInput(literalParameters, mapping.input).issues);
@@ -83,6 +105,7 @@ export function resolveTaskInputMapping(
   childParameters: TaskParameter[],
   mapping: TaskInputMapping,
   parentInput: TaskInput = {},
+  runtime?: { results: Record<string, unknown>; context: unknown },
 ): { input: TaskInput; issues: TaskInputIssue[] } {
   const validated = validateTaskInputMapping(
     parentParameters,
@@ -100,9 +123,17 @@ export function resolveTaskInputMapping(
   if (issues.length) return { input: {}, issues };
   const provided = { ...mapping.input };
   for (const [name, binding] of Object.entries(mapping.inputBindings ?? {})) {
-    const value = parent.input[binding.key];
+    const value =
+      binding.from === 'taskInput'
+        ? parent.input[binding.key]
+        : binding.from === 'context'
+          ? readResultPath(runtime?.context, [binding.key])
+          : readResultPath(runtime?.results[binding.stepId], binding.path);
     // 缺值才回退；false、0、空字符串和 null 都是调用者明确提供的值。
-    if (value !== undefined) provided[name] = value;
+    if (value !== undefined) provided[name] = z.json().parse(value);
+    else if (binding.from !== 'taskInput')
+      issues.push({ name, message: `参数「${name}」绑定的运行数据不存在` });
   }
+  if (issues.length) return { input: {}, issues };
   return resolveTaskInput(childParameters, provided);
 }

@@ -7,8 +7,10 @@ import type {
   SshScriptResult,
 } from '@deploy-crab/contracts/ssh-script';
 import type { TaskInput } from '@deploy-crab/contracts/task-input';
+import type { TaskExecutionContext } from '@deploy-crab/contracts/task-placement';
 
 export interface SshContext {
+  executionContext?: TaskExecutionContext;
   signal: AbortSignal;
   output(stream: 'stdout' | 'stderr', text: string): void;
 }

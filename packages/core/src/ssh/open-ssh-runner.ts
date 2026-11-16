@@ -117,7 +117,7 @@ export class OpenSshRunner extends SshRunner {
     context: SshContext,
   ): Promise<SshScriptResult> {
     const config = SshScriptInput.parse(script);
-    const body = sshScript(config, input);
+    const body = sshScript(config, input, context.executionContext);
     const started = Date.now();
     await this.withConnection(target, context, (path) =>
       this.execute(path, target.jumps.length, context, {
