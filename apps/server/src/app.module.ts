@@ -10,12 +10,13 @@ import {
   type DatabaseModuleOptions,
 } from './modules/database/database.module';
 import { ZodValidationPipe } from './pipes/zod/zod-validation.pipe';
+import { TasksModule } from './modules/tasks/tasks.module';
 
 export type AppModuleOptions = DatabaseModuleOptions;
 
 @Module({
   // 不需要启动参数的模块直接写在这里
-  imports: [HostsModule, ClustersModule],
+  imports: [HostsModule, ClustersModule, TasksModule],
   controllers: [AppController],
   providers: [
     AppService,

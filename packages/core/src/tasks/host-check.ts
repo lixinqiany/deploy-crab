@@ -1,7 +1,7 @@
 import type { ConnectionTarget } from '@deploy-crab/contracts/connection';
-import type { Task } from '../execution/definition';
+import type { TaskPlanner } from '../execution/definition';
 
-export const hostCheckTask: Task<ConnectionTarget> = {
+export const hostCheckTask: TaskPlanner<ConnectionTarget> = {
   key: 'host.check',
   plan: (target) => ({
     task: 'host.check',

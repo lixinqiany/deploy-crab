@@ -23,3 +23,5 @@ import { ApiError } from '@deploy-crab/contracts/error';
 | `src/constants/<领域>.ts`       | 常量，如 `constants/runtime.ts` 的 `DATA_DIRECTORY_NAME` |
 
 同名导出的 schema 和类型可以同时使用：`Host.parse(data)` 做校验，`Host` 作类型标注。需要出现在 OpenAPI 组件中的 schema 用 `.meta({ id })` 命名，生成的客户端类型会沿用这个名字。
+
+`task.ts` 定义用户任务、步骤调用、任务引用及钩子，包含步骤依赖图的结构校验。`CreateTaskInput` 用于创建，`UpdateTaskInput` 用于携带当前 revision 完整替换；跨任务引用存在性、引用循环和删除保护由 core 在数据库事务内检查。任务定义与 `execution.ts` 中的运行状态分开，保存定义不会创建 Run。

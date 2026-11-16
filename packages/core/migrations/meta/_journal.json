@@ -8,6 +8,13 @@
       "when": 1794799816985,
       "tag": "0000_inventory",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794809738451,
+      "tag": "0001_task_definitions",
+      "breakpoints": true
     }
   ]
 }

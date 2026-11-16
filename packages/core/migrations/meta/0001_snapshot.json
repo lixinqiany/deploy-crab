@@ -1,0 +1,567 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "f55d656b-fb87-4d0d-8e26-2376bb90dbe9",
+  "prevId": "f385ddf3-a522-41ac-aef3-323dd7c9cf99",
+  "tables": {
+    "cluster_member_groups": {
+      "name": "cluster_member_groups",
+      "columns": {
+        "cluster_id": {
+          "name": "cluster_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "host_id": {
+          "name": "host_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "group_name": {
+          "name": "group_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "cluster_member_groups_position_unique": {
+          "name": "cluster_member_groups_position_unique",
+          "columns": [
+            "cluster_id",
+            "host_id",
+            "position"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "cluster_member_groups_cluster_id_host_id_cluster_members_cluster_id_host_id_fk": {
+          "name": "cluster_member_groups_cluster_id_host_id_cluster_members_cluster_id_host_id_fk",
+          "tableFrom": "cluster_member_groups",
+          "tableTo": "cluster_members",
+          "columnsFrom": [
+            "cluster_id",
+            "host_id"
+          ],
+          "columnsTo": [
+            "cluster_id",
+            "host_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "cluster_member_groups_cluster_id_host_id_group_name_pk": {
+          "columns": [
+            "cluster_id",
+            "host_id",
+            "group_name"
+          ],
+          "name": "cluster_member_groups_cluster_id_host_id_group_name_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "cluster_member_groups_position_check": {
+          "name": "cluster_member_groups_position_check",
+          "value": "\"cluster_member_groups\".\"position\" >= 0"
+        }
+      }
+    },
+    "cluster_members": {
+      "name": "cluster_members",
+      "columns": {
+        "cluster_id": {
+          "name": "cluster_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "host_id": {
+          "name": "host_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "cluster_members_position_unique": {
+          "name": "cluster_members_position_unique",
+          "columns": [
+            "cluster_id",
+            "position"
+          ],
+          "isUnique": true
+        },
+        "cluster_members_host_id_idx": {
+          "name": "cluster_members_host_id_idx",
+          "columns": [
+            "host_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "cluster_members_cluster_id_clusters_id_fk": {
+          "name": "cluster_members_cluster_id_clusters_id_fk",
+          "tableFrom": "cluster_members",
+          "tableTo": "clusters",
+          "columnsFrom": [
+            "cluster_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "cluster_members_host_id_hosts_id_fk": {
+          "name": "cluster_members_host_id_hosts_id_fk",
+          "tableFrom": "cluster_members",
+          "tableTo": "hosts",
+          "columnsFrom": [
+            "host_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "cluster_members_cluster_id_host_id_pk": {
+          "columns": [
+            "cluster_id",
+            "host_id"
+          ],
+          "name": "cluster_members_cluster_id_host_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "cluster_members_position_check": {
+          "name": "cluster_members_position_check",
+          "value": "\"cluster_members\".\"position\" >= 0"
+        }
+      }
+    },
+    "clusters": {
+      "name": "clusters",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_key": {
+          "name": "name_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "clusters_name_key_unique": {
+          "name": "clusters_name_key_unique",
+          "columns": [
+            "name_key"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "hosts": {
+      "name": "hosts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_key": {
+          "name": "name_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "public_address": {
+          "name": "public_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "private_address": {
+          "name": "private_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "connect_via": {
+          "name": "connect_via",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "port": {
+          "name": "port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user": {
+          "name": "user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "auth": {
+          "name": "auth",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "jump_host_id": {
+          "name": "jump_host_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "labels": {
+          "name": "labels",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "hosts_name_key_unique": {
+          "name": "hosts_name_key_unique",
+          "columns": [
+            "name_key"
+          ],
+          "isUnique": true
+        },
+        "hosts_jump_host_id_idx": {
+          "name": "hosts_jump_host_id_idx",
+          "columns": [
+            "jump_host_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "hosts_jump_host_id_hosts_id_fk": {
+          "name": "hosts_jump_host_id_hosts_id_fk",
+          "tableFrom": "hosts",
+          "tableTo": "hosts",
+          "columnsFrom": [
+            "jump_host_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "hosts_port_check": {
+          "name": "hosts_port_check",
+          "value": "\"hosts\".\"port\" BETWEEN 1 AND 65535"
+        },
+        "hosts_connect_via_check": {
+          "name": "hosts_connect_via_check",
+          "value": "\"hosts\".\"connect_via\" IN ('public', 'private')"
+        },
+        "hosts_address_check": {
+          "name": "hosts_address_check",
+          "value": "(\"hosts\".\"connect_via\" = 'public' AND \"hosts\".\"public_address\" IS NOT NULL) OR (\"hosts\".\"connect_via\" = 'private' AND \"hosts\".\"private_address\" IS NOT NULL)"
+        },
+        "hosts_jump_self_check": {
+          "name": "hosts_jump_self_check",
+          "value": "\"hosts\".\"jump_host_id\" IS NULL OR \"hosts\".\"jump_host_id\" <> \"hosts\".\"id\""
+        },
+        "hosts_auth_json_check": {
+          "name": "hosts_auth_json_check",
+          "value": "json_valid(\"hosts\".\"auth\")"
+        },
+        "hosts_labels_json_check": {
+          "name": "hosts_labels_json_check",
+          "value": "json_valid(\"hosts\".\"labels\")"
+        }
+      }
+    },
+    "task_references": {
+      "name": "task_references",
+      "columns": {
+        "task_id": {
+          "name": "task_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "referenced_task_id": {
+          "name": "referenced_task_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "task_references_target_idx": {
+          "name": "task_references_target_idx",
+          "columns": [
+            "referenced_task_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "task_references_task_id_tasks_id_fk": {
+          "name": "task_references_task_id_tasks_id_fk",
+          "tableFrom": "task_references",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_references_referenced_task_id_tasks_id_fk": {
+          "name": "task_references_referenced_task_id_tasks_id_fk",
+          "tableFrom": "task_references",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "referenced_task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "task_references_task_id_referenced_task_id_pk": {
+          "columns": [
+            "task_id",
+            "referenced_task_id"
+          ],
+          "name": "task_references_task_id_referenced_task_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "task_references_self_check": {
+          "name": "task_references_self_check",
+          "value": "\"task_references\".\"task_id\" <> \"task_references\".\"referenced_task_id\""
+        }
+      }
+    },
+    "tasks": {
+      "name": "tasks",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_key": {
+          "name": "name_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "definition": {
+          "name": "definition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "tasks_name_key_unique": {
+          "name": "tasks_name_key_unique",
+          "columns": [
+            "name_key"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "tasks_definition_json_check": {
+          "name": "tasks_definition_json_check",
+          "value": "json_valid(\"tasks\".\"definition\")"
+        },
+        "tasks_revision_check": {
+          "name": "tasks_revision_check",
+          "value": "\"tasks\".\"revision\" > 0"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

@@ -52,7 +52,8 @@ export interface ExecutionPlan {
   hooks?: Hooks;
 }
 
-export interface Task<T> {
+/** 代码生成执行计划的适配器；用户保存的流程定义见 contracts/task。 */
+export interface TaskPlanner<T> {
   key: string;
   plan(input: T): ExecutionPlan;
 }

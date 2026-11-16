@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
 import { InventoryView } from '@/views/inventory/InventoryView';
 import HostSvg from '@/assets/icon/host.svg?react';
+import { ReadOutlined } from '@ant-design/icons';
+import { TasksView } from '@/views/tasks/TasksView';
 
 export interface NavRoute {
   /** 路由路径，同时作为侧边栏菜单项的 key */
@@ -18,5 +20,11 @@ export const navRoutes: NavRoute[] = [
     label: '集群管理',
     icon: <SvgIcon component={HostSvg} size="24px" />,
     element: <InventoryView />,
+  },
+  {
+    path: '/tasks',
+    label: '任务库',
+    icon: <ReadOutlined style={{ fontSize: 22 }} />,
+    element: <TasksView />,
   },
 ];

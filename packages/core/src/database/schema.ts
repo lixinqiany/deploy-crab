@@ -3,3 +3,5 @@ export { hosts } from './tables/hosts';
 export { clusters } from './tables/clusters';
 export { clusterMembers } from './tables/cluster-members';
 export { clusterMemberGroups } from './tables/cluster-member-groups';
+export { tasks } from './tables/tasks';
+export { taskReferences } from './tables/task-references';
