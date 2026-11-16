@@ -12,6 +12,10 @@ import {
   ValidationError,
 } from '../errors/domain-error';
 import { Database, DATABASE_FILENAME } from '../database/database';
+import { ActionRegistry } from '../execution/action-registry';
+import { ExecutionService } from '../execution/execution-service';
+import { MemoryRunStore } from '../execution/run-store';
+import { ConnectionResolver } from '../ssh/connection-resolver';
 import { ClusterService } from './cluster-service';
 import { HostService } from './host-service';
 
@@ -33,6 +37,7 @@ const input = (overrides: Partial<CreateHostInput> = {}): CreateHostInput => ({
 describe('HostService', () => {
   let root: string;
   let database: Database;
+  let execution: ExecutionService;
   let hosts: HostService;
   let clusters: ClusterService;
 
@@ -42,10 +47,19 @@ describe('HostService', () => {
       join(root, DATABASE_FILENAME),
       fileURLToPath(new URL('../../migrations/', import.meta.url)),
     );
-    hosts = new HostService(database);
+    execution = new ExecutionService(
+      new ActionRegistry(),
+      new MemoryRunStore(),
+    );
+    hosts = new HostService(
+      database,
+      new ConnectionResolver(database),
+      execution,
+    );
     clusters = new ClusterService(database);
   });
   afterEach(async () => {
+    await execution.close();
     database.close();
     await rm(root, { recursive: true, force: true });
   });

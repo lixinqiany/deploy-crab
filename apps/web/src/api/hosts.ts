@@ -4,12 +4,18 @@ import type {
   UpdateHostBody,
 } from '@deploy-crab/contracts/host';
 import { http } from './http';
+import type { CheckHostBody } from '@deploy-crab/contracts/connection';
+import type { Run } from '@deploy-crab/contracts/execution';
 
 /**
  * 主机接口。失败时抛出 `ApiRequestError`。
  * 写成箭头函数属性，可以直接当回调传递（如 `queryFn: hostsApi.list`）。
  */
 export const hostsApi = {
+  checkConnection: async (body: CheckHostBody): Promise<Run> => {
+    const { data } = await http.post<Run>('/hosts/check-connection', body);
+    return data;
+  },
   list: async (): Promise<Host[]> => {
     const { data } = await http.get<Host[]>('/hosts');
     return data;

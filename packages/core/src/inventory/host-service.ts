@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await -- 保留 Service 的 Promise 契约，将同步存储异常转换为 rejection。 */
 import { randomUUID } from 'node:crypto';
+import type { CheckHostInput } from '@deploy-crab/contracts/connection';
+import type { Run } from '@deploy-crab/contracts/execution';
 import {
   type CreateHostInput,
   type Host,
@@ -7,6 +9,9 @@ import {
   type UpdateHostInput,
 } from '@deploy-crab/contracts/host';
 import type { Database } from '../database/database';
+import type { ExecutionService } from '../execution/execution-service';
+import type { ConnectionResolver } from '../ssh/connection-resolver';
+import { hostCheckTask } from '../tasks/host-check';
 import {
   ConflictError,
   InUseError,
@@ -18,9 +23,24 @@ import { definedFields } from '../utils/defined-fields';
 import { ClusterRepository } from './cluster-repository';
 import { HostRepository } from './host-repository';
 
-/** 主机业务规则，不依赖 Nest。输入由 contracts 校验，检查和修改共用一个写事务。 */
+/** 主机业务入口，不依赖 Nest。资产修改在事务内完成，SSH 检查派发给执行内核。 */
 export class HostService {
-  constructor(private readonly database: Database) {}
+  constructor(
+    private readonly database: Database,
+    private readonly resolver: ConnectionResolver,
+    private readonly execution: ExecutionService,
+  ) {}
+
+  /** 检查当前连接草稿，无需先保存主机或创建 Session。 */
+  async checkConnection(input: CheckHostInput): Promise<Run> {
+    return this.execution.submit(
+      hostCheckTask.plan(this.resolver.resolve(input)),
+      {
+        sessionId: null,
+        source: 'host-form',
+      },
+    );
+  }
 
   async list(): Promise<Host[]> {
     return this.database

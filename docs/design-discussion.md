@@ -3,7 +3,7 @@
 整理日期：2026-11-13  
 文档性质：前期讨论整理与设计草案
 
-2026-11-16 更新：主机和集群现已采用 Drizzle + better-sqlite3，保存在实例数据目录的 `deploy-crab.sqlite` 中。下文文件存储方案保留为历史讨论，当前存储及迁移方式以 [core 说明](../packages/core/README.md) 为准。SSH Runner 和执行记录不在本次实现范围内。
+2026-11-16 更新：主机和集群现已采用 Drizzle + better-sqlite3，保存在实例数据目录的 `deploy-crab.sqlite` 中。执行骨架现已包含 Action、Task、Run、Step、Hook 与主机连接检查，检查记录仅临时保留在内存。下文文件存储方案保留为历史讨论，当前存储、执行范围及生命周期规则以 [core 说明](../packages/core/README.md) 为准。
 
 本文汇总关于 deploy-crab 的产品定位、运行模型、文件存储、任务编排、SSH 接入和会话交互的讨论。对于讨论中经过修正的观点，以最后统一的建议为准；仍需验证的方案明确标注为建议或待确认。
 

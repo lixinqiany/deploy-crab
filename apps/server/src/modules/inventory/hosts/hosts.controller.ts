@@ -1,4 +1,5 @@
 import type { Host } from '@deploy-crab/contracts/host';
+import type { Run } from '@deploy-crab/contracts/execution';
 import { HostService } from '@deploy-crab/core/inventory/host-service';
 import {
   Body,
@@ -12,7 +13,12 @@ import {
   Post,
 } from '@nestjs/common';
 // DTO 必须用值导入：参数类型要保留到运行时，校验 pipe 才能拿到 schema
-import { CreateHostDto, HostParamsDto, UpdateHostDto } from './hosts.dto';
+import {
+  CheckHostDto,
+  CreateHostDto,
+  HostParamsDto,
+  UpdateHostDto,
+} from './hosts.dto';
 
 /**
  * 主机的 HTTP 接口。只负责把请求转给 `HostService`：
@@ -21,6 +27,12 @@ import { CreateHostDto, HostParamsDto, UpdateHostDto } from './hosts.dto';
 @Controller('hosts')
 export class HostsController {
   constructor(private readonly hosts: HostService) {}
+
+  @Post('check-connection')
+  @HttpCode(HttpStatus.ACCEPTED)
+  check(@Body() body: CheckHostDto): Promise<Run> {
+    return this.hosts.checkConnection(body);
+  }
 
   @Get()
   list(): Promise<Host[]> {

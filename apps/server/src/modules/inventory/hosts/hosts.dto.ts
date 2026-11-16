@@ -1,4 +1,5 @@
 import { ResourceId } from '@deploy-crab/contracts/fields';
+import { CheckHostInput } from '@deploy-crab/contracts/connection';
 import { CreateHostInput, UpdateHostInput } from '@deploy-crab/contracts/host';
 import { z } from 'zod';
 import { createZodDto } from '@/utils/zod-dto';
@@ -8,6 +9,9 @@ export class CreateHostDto extends createZodDto(CreateHostInput) {}
 
 /** `PATCH /hosts/:id` 的请求体 */
 export class UpdateHostDto extends createZodDto(UpdateHostInput) {}
+
+/** POST /hosts/check-connection：只校验连接字段，允许尚未保存的主机草稿。 */
+export class CheckHostDto extends createZodDto(CheckHostInput) {}
 
 /**
  * 路径参数 `:id`。id 会拼进存储的文件路径，先在这里校验成 UUID，

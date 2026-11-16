@@ -25,6 +25,7 @@ import {
   sshTarget,
 } from '@/utils/ssh';
 import { useSaveHost } from '@/views/inventory/useInventory';
+import { HostConnectionCheck } from './HostConnectionCheck';
 
 interface HostFormValues {
   name: string;
@@ -399,6 +400,19 @@ export const HostDrawer = ({ host, hosts, onClose }: HostDrawerProps) => {
               className="text-sand-7 hover:bg-white/10 hover:text-white"
             />
           </div>
+          <HostConnectionCheck
+            key={editing?.id ?? 'new'}
+            connection={{
+              hostId: editing?.id ?? null,
+              publicAddress: endpoint.publicAddress,
+              privateAddress: endpoint.privateAddress,
+              connectVia: endpoint.connectVia,
+              port: endpoint.port,
+              user: endpoint.user,
+              auth: endpoint.auth,
+              jumpHostId: endpoint.jumpHostId,
+            }}
+          />
         </section>
 
         <Form.Item name="labels" label="标签">

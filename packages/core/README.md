@@ -42,6 +42,84 @@ pnpm --filter @deploy-crab/core db:generate --name=describe_change
 
 Server 的 Rspack 配置将该目录复制到 `.dev/migrations/` 和 `dist/migrations/`，运行时从入口文件旁读取，不依赖源码目录或启动工作目录。`drizzle-kit` 只用于开发，生产环境只需运行依赖和已生成的迁移文件。
 
+## 执行骨架
+
+首个入口是主机表单的“测试连接”：当前草稿 → `HostService.checkConnection()` → `host.check` Task → Run → `check-connection` Step → `ssh.probe` Action → `SshRunner`。检查无需保存主机，也无需创建 Session。
+
+| 概念 | 当前职责 |
+| --- | --- |
+| Action | 注册在 `ActionRegistry` 的能力实现，接收参数、目标、取消信号和输出回调 |
+| Task | 将业务输入转换为 `ExecutionPlan`；不保存执行状态 |
+| Run | 一次 Task 派发，冻结一个目标及其跳板链，拥有独立 id 和生命周期 |
+| Step | Run 内的一次 Action 调用，有自己的参数、依赖、结果和钩子 |
+| Hook | 附着在 Run 或 Step 上的 Action 调用，也记录状态和错误 |
+| Session | 目前只预留可空的 `sessionId`，不参与调度 |
+
+执行代码位于 `src/execution/`，与 Nest、数据库和 SSH 实现解耦。`src/tasks/host-check.ts` 是 Task 示例，`src/actions/ssh-probe.ts` 是 Action 示例；`src/ssh/` 处理连接快照和 OpenSSH 进程。
+
+### 依赖、并发和生命周期
+
+`ExecutionService.submit(plan, { sessionId, source, dependsOn })` 创建并立即返回排队中的 Run。`get(id)` 查询快照，`cancel(id)` 请求取消，`subscribe(listener)` 观察变化，`close()` 取消执行并等待资源释放。
+
+Run 的 `dependsOn` 引用其他已存在的 Run；Step 的 `dependsOn` 只引用同一 Run 内的 Step id。依赖不可在提交后修改，步骤图必须无环且引用有效。所有依赖成功后才能启动；前置节点失败或取消时，依赖节点标记为 `blocked`，无依赖分支继续执行。两台机器分别创建两个 Run，不配置依赖即可并发。并发额度默认 4，由全部 Run 共用；一个额度覆盖整个 Step 的主体和钩子，Run 自身的钩子独立取得额度。
+
+Run 和 Step 使用相同的生命周期：
+
+```text
+queued → running
+           before → body → afterSuccess
+              任一失败或取消 ↘
+                            finally → 汇总终态
+```
+
+- `before`：按顺序执行；失败则跳过主体和 `afterSuccess`。
+- `body`：Step 调用 Action；Run 调度自己的步骤图。
+- `afterSuccess`：主体成功后按顺序执行；失败则停止后续同阶段钩子。
+- `finally`：已经进入生命周期的节点始终尝试所有收尾钩子；排队中被取消或被依赖阻塞的节点不执行钩子。
+- 钩子失败计入所属 Run/Step 的失败，主体错误和收尾错误都保留。所有钩子结束后才发布终态、放行依赖。`finally` 使用新的取消信号，每个钩子默认超时 5 秒；普通 Action 默认 30 秒，主机探测为 20 秒。
+- `context.lifecycle` 提供所属节点当前阶段、主体结果和累计错误的快照；`context.results` 提供成功步骤的结果。
+- 通知订阅只负责观察，其同步异常不会影响执行；业务逻辑写在钩子中。
+
+主体与钩子均使用同样的 Action 引用，例如在 Task 的计划里配置：
+
+```ts
+{
+  task: 'example',
+  target,
+  steps: [
+    { id: 'check', title: '检查连接', action: 'ssh.probe' },
+    // 新增能力后，可以在这里追加 dependsOn: ['check'] 的步骤。
+  ],
+  hooks: {
+    finally: [{ key: 'verify-connection', action: 'ssh.probe', timeoutMs: 5000 }],
+  },
+}
+```
+
+Action 必须响应 `context.signal`，结束自身操作、释放资源后才 settle Promise。内核不会用 Promise.race 伪装成已经取消；忽略 signal 的第三方能力会阻塞收尾。取消 SSH 会结束本地进程；未来远程安装等有副作用的能力仍需自行实现幂等、检查或回滚，断开 SSH 不能保证远端操作回滚。
+
+### 临时记录与 HTTP
+
+首版只启用 `MemoryRunStore`：最多保留 200 个 Run，完成后保留 10 分钟，在读写时清理；仍被未结束 Run 依赖的记录暂不清理。输出保留最多 128 块、32,768 个字符，超出时保留末尾并标记截断。没有新增 SQLite 表、每次执行的 JSON 文件、持久日志或 activity 目录。
+
+`sessionId: null` 表示没有会话归属，`retention: 'memory'` 表示临时保留，两者是独立含义。服务重启后临时记录消失；关闭抽屉不会取消已提交的检查。后续持久执行需要补充保留策略、SQLite RunStore 和重启中断处理；当前不提供恢复执行，`interrupted` 仅预留状态。
+
+| HTTP 接口 | 用途 |
+| --- | --- |
+| `POST /api/hosts/check-connection` | 接收主机连接草稿，202 返回排队中的 Run |
+| `GET /api/runs/:id` | 返回状态、步骤、钩子、结构化结果及有限输出；过期返回 404 |
+| `POST /api/runs/:id/cancel` | 请求取消，202 返回当前状态；需继续查询直到终态 |
+
+检查请求只需 `publicAddress` 或 `privateAddress`、`user`，其他字段与主机连接配置一致；编辑主机时可附带 `hostId`，仍使用请求中的当前连接字段。`ConnectionResolver` 在一个 SQLite 读取快照中解析跳板链，网络执行发生在事务之外。
+
+### SSH 执行约定
+
+运行节点需要 OpenSSH 客户端。使用运行节点的 ssh-agent 或指定私钥路径；加密私钥可由 agent 为所选身份签名。连接使用单次临时配置文件、非交互模式和固定命令 `true`，因此成功表示 SSH 认证和远程命令执行都通过。配置文件执行后清理，不是运行历史。
+
+配置隔离于用户的 `~/.ssh/config`，跳板每一跳使用各自的地址、用户和认证。保留严格主机指纹验证，使用运行节点的默认 known_hosts；首次连接需先在运行节点核实并信任指纹。未提供自动信任、密码交互或指纹确认界面。常见错误区分为未信任指纹、指纹变化、认证失败、超时、拒绝连接和名称解析失败，并提供原始诊断输出。
+
+新增能力时先实现并注册 Action，再由 Task 编排 Step。当前只实现 `host.check` / `ssh.probe`；Docker 安装、任务编辑器、重试、跨进程队列和持久恢复留待实际业务需要时扩展。
+
 ## 验证
 
 ```sh
@@ -51,3 +129,5 @@ pnpm --filter @deploy-crab/core lint
 ```
 
 主机和集群的 Service 测试各自创建临时 SQLite 数据库并执行迁移，覆盖增删改查、名称唯一性、跳板链和成员引用等业务规则；测试结束后关闭连接并清理临时目录。
+
+执行测试覆盖步骤与 Run 的依赖、共享并发额度、钩子失败传播、超时取消、记录过期及输出上限。OpenSSH 测试在客户端可用时验证配置解析、连接拒绝，以及取消后真实子进程断开本地测试连接。Server 的 execution e2e 通过替换 `SshRunner` 验证 HTTP、草稿快照、多跳解析、错误和取消；这些替身测试不代表远端 SSH 认证已经实测。
