@@ -148,6 +148,15 @@ export const TaskDetail = ({
           </Popconfirm>
         </div>
       </div>
+      {task.labels.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5" aria-label="任务标签">
+          {task.labels.map((label) => (
+            <Tag key={label} className="m-0">
+              {label}
+            </Tag>
+          ))}
+        </div>
+      )}
       {task.description && (
         <p className="mb-3 text-sm leading-relaxed whitespace-pre-wrap text-sand-11">
           {task.description}

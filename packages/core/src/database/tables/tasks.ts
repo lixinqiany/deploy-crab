@@ -16,6 +16,10 @@ export const tasks = sqliteTable(
     name: text('name').notNull(),
     nameKey: text('name_key').notNull(),
     description: text('description').notNull(),
+    labels: text('labels', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
     sourceUrl: text('source_url'),
     definition: text('definition', { mode: 'json' })
       .$type<TaskDefinition>()

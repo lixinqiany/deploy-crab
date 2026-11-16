@@ -187,9 +187,22 @@ export const TaskDefinition = z
   .meta({ id: 'TaskDefinition' });
 export type TaskDefinition = z.output<typeof TaskDefinition>;
 
+export const TaskLabels = z
+  .array(
+    z
+      .string()
+      .trim()
+      .min(1, '标签不能为空')
+      .max(32, '标签最多 32 个字符')
+      .regex(/^\S+$/, '标签不能包含空格'),
+  )
+  .max(20, '最多 20 个标签')
+  .refine((labels) => new Set(labels).size === labels.length, '标签不能重复');
+
 const taskFields = {
   name: DisplayName,
   description: Description.default(''),
+  labels: TaskLabels.default([]),
   sourceUrl: z
     .url({ protocol: /^https?$/ })
     .max(2048)

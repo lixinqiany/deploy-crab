@@ -35,6 +35,7 @@ import {
   callKindLabel,
   newStep,
   nodeKey,
+  taskLabelOptions,
   type CallKind,
 } from './task-editor-model';
 
@@ -224,6 +225,31 @@ export const TaskEditor = ({
             />
           </Form.Item>
         </div>
+        <Form.Item
+          label="标签"
+          extra="输入后按回车创建，也可选择已有标签；最多 20 个。"
+        >
+          <Select
+            mode="tags"
+            aria-label="任务标签"
+            placeholder="例如 部署、数据库、巡检"
+            value={draft.labels}
+            options={taskLabelOptions(tasks)}
+            tokenSeparators={[',', '，', ' ']}
+            maxCount={20}
+            maxTagCount="responsive"
+            onChange={(labels: string[]) =>
+              setDraft({
+                ...draft,
+                labels: [
+                  ...new Set(
+                    labels.map((label) => label.trim()).filter(Boolean),
+                  ),
+                ],
+              })
+            }
+          />
+        </Form.Item>
         <Form.Item label="说明">
           <Input.TextArea
             aria-label="任务说明"

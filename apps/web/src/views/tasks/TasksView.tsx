@@ -7,13 +7,19 @@ import {
   SearchOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Input, Skeleton } from 'antd';
+import { Alert, App, Button, Empty, Input, Select, Skeleton, Tag } from 'antd';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { tasksApi } from '@/api/tasks';
 import { TaskEditor } from './TaskEditor';
 import { TaskDetail } from './TaskDetail';
-import { blankTask, copyTaskBody, uniqueTaskName } from './task-editor-model';
+import {
+  blankTask,
+  copyTaskBody,
+  matchesTask,
+  taskLabelOptions,
+  uniqueTaskName,
+} from './task-editor-model';
 
 export const TasksView = () => {
   const { message } = App.useApp();
@@ -26,18 +32,23 @@ export const TasksView = () => {
   const tasks = query.data ?? [];
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState('');
+  const [labels, setLabels] = useState<string[]>([]);
   const [editor, setEditor] = useState<{
     initial: CreateTaskInput;
     editing: Task | null;
   } | null>(null);
+  const filtered = tasks.filter((task) => matchesTask(task, search, labels));
   const selected =
-    tasks.find((task) => task.id === params.get('task')) ?? tasks[0];
-  const filtered = tasks.filter((task) =>
-    `${task.name} ${task.description}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+    filtered.find((task) => task.id === params.get('task')) ?? filtered[0];
   const select = (id: string) => setParams({ task: id }, { replace: true });
+  const clearFilters = () => {
+    setSearch('');
+    setLabels([]);
+  };
+  const openTask = (id: string) => {
+    clearFilters();
+    select(id);
+  };
   const remove = useMutation({
     mutationFn: tasksApi.delete,
     onSuccess: async () => {
@@ -132,12 +143,27 @@ export const TasksView = () => {
                   <Input
                     aria-label="搜索任务"
                     prefix={<SearchOutlined className="text-sand-9" />}
-                    placeholder="搜索任务"
+                    placeholder="搜索名称、说明或标签"
                     allowClear
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="mb-3"
                   />
+                  <Select
+                    className="mb-3 w-full"
+                    mode="multiple"
+                    aria-label="任务库标签筛选"
+                    placeholder="按标签筛选（同时包含）"
+                    allowClear
+                    value={labels}
+                    options={taskLabelOptions(tasks)}
+                    onChange={setLabels}
+                    maxTagCount="responsive"
+                    showSearch={{ optionFilterProp: 'label' }}
+                  />
+                  <p className="mb-2 mt-0 text-xs text-sand-9">
+                    {filtered.length} 个匹配任务
+                  </p>
                   <div className="flex flex-col gap-1.5">
                     {filtered.map((task) => (
                       <button
@@ -155,6 +181,23 @@ export const TasksView = () => {
                           {task.definition.steps.length} 个步骤 · 版本{' '}
                           {task.revision}
                         </span>
+                        {task.labels.length > 0 && (
+                          <span className="mt-2 flex flex-wrap gap-1">
+                            {task.labels.slice(0, 3).map((label) => (
+                              <Tag key={label} className="m-0">
+                                {label}
+                              </Tag>
+                            ))}
+                            {task.labels.length > 3 && (
+                              <Tag
+                                className="m-0"
+                                title={task.labels.slice(3).join('、')}
+                              >
+                                +{task.labels.length - 3}
+                              </Tag>
+                            )}
+                          </span>
+                        )}
                       </button>
                     ))}
                     {!filtered.length && (
@@ -164,7 +207,7 @@ export const TasksView = () => {
                     )}
                   </div>
                 </aside>
-                {selected && (
+                {selected ? (
                   <TaskDetail
                     task={selected}
                     tasks={tasks}
@@ -182,8 +225,20 @@ export const TasksView = () => {
                     }
                     onDelete={() => remove.mutate(selected.id)}
                     deleting={remove.isPending}
-                    onOpenTask={select}
+                    onOpenTask={openTask}
                   />
+                ) : (
+                  <div className="rounded-xl border border-sand-4 bg-sand-1 p-8">
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="没有匹配的任务"
+                    >
+                      <p className="text-sm text-sand-9">
+                        试试其他关键词或标签。
+                      </p>
+                      <Button onClick={clearFilters}>清除筛选</Button>
+                    </Empty>
+                  </div>
                 )}
               </div>
             )}
@@ -196,7 +251,7 @@ export const TasksView = () => {
             tasks={tasks}
             catalog={catalog.data}
             onClose={() => setEditor(null)}
-            onSaved={(task) => select(task.id)}
+            onSaved={(task) => openTask(task.id)}
           />
         )}
       </div>

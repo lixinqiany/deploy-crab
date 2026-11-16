@@ -1,6 +1,7 @@
 import type { Task, TaskCall, TaskCatalog } from '@deploy-crab/contracts/task';
 import { Form, Input, Segmented, Select } from 'antd';
 import { callKind, newCall, type CallKind } from './task-editor-model';
+import { TaskReferenceSelect } from './TaskReferenceSelect';
 
 interface Props {
   call: TaskCall;
@@ -39,12 +40,9 @@ export const TaskCallEditor = ({
             : '先保存一个独立任务，再在这里引用。'
         }
       >
-        <Select
-          aria-label="选择引用任务"
-          value={call.taskId || null}
-          placeholder="选择可复用的任务"
-          showSearch={{ optionFilterProp: 'label' }}
-          options={tasks.map((task) => ({ value: task.id, label: task.name }))}
+        <TaskReferenceSelect
+          value={call.taskId}
+          tasks={tasks}
           onChange={(taskId: string) => onChange({ kind: 'task', taskId })}
         />
       </Form.Item>

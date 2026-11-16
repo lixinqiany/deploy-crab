@@ -43,12 +43,14 @@ export const newStep = (kind: CallKind, previous?: string): TaskStep => ({
 export const blankTask = (): CreateTaskInput => ({
   name: '',
   description: '',
+  labels: [],
   sourceUrl: null,
   definition: { schemaVersion: 1, steps: [], hooks: emptyTaskHooks() },
 });
 export const copyTaskBody = (task: Task): CreateTaskInput => ({
   name: task.name,
   description: task.description,
+  labels: [...task.labels],
   sourceUrl: task.sourceUrl,
   definition: structuredClone(task.definition),
 });
@@ -77,4 +79,27 @@ export const uniqueTaskName = (name: string, tasks: Task[]): string => {
     const next = `${name.slice(0, 54)} (${index})`;
     if (!names.has(next.toLowerCase())) return next;
   }
+};
+
+export const taskLabelOptions = (tasks: Task[]) =>
+  [...new Set(tasks.flatMap((task) => task.labels))]
+    .sort((a, b) => a.localeCompare(b))
+    .map((label) => ({ value: label, label }));
+
+/** 名称、说明、标签共享搜索；多个关键词及所选标签均须匹配。 */
+export const matchesTask = (
+  task: Task,
+  search: string,
+  labels: string[] = [],
+): boolean => {
+  const text =
+    `${task.name}\n${task.description}\n${task.labels.join('\n')}`.toLowerCase();
+  return (
+    labels.every((label) => task.labels.includes(label)) &&
+    search
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .every((word) => text.includes(word))
+  );
 };

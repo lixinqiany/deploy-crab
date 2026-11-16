@@ -49,6 +49,7 @@ const reference = (name: string, taskId: string): CreateTaskInput =>
 const update = (task: Task): CreateTaskInput & { revision: number } => ({
   name: task.name,
   description: task.description,
+  labels: task.labels,
   sourceUrl: task.sourceUrl,
   definition: task.definition,
   revision: task.revision,
@@ -69,13 +70,35 @@ describe('TaskService', () => {
     await rm(root, { recursive: true, force: true });
   });
 
+  const migrationsThrough = async (index: number) => {
+    const directory = join(root, `migrations-through-${index}`);
+    await mkdir(join(directory, 'meta'), { recursive: true });
+    const journal = JSON.parse(
+      await readFile(join(migrations, 'meta/_journal.json'), 'utf8'),
+    ) as { entries: { idx: number; tag: string }[] };
+    journal.entries = journal.entries.filter((entry) => entry.idx <= index);
+    await writeFile(
+      join(directory, 'meta/_journal.json'),
+      JSON.stringify(journal),
+    );
+    for (const { tag } of journal.entries) {
+      await copyFile(
+        join(migrations, `${tag}.sql`),
+        join(directory, `${tag}.sql`),
+      );
+    }
+    return directory;
+  };
+
   it('保存纯定义、升级版本，关闭数据库后仍可读取', () => {
-    const task = service.create(body());
+    const task = service.create(body('task', { labels: ['部署', '巡检'] }));
     const saved = service.update(task.id, {
       ...update(task),
       description: '修改后的说明',
+      labels: ['生产'],
     });
     expect(saved.revision).toBe(2);
+    expect(saved.labels).toEqual(['生产']);
     expect(saved.createdAt).toBe(task.createdAt);
     database.close();
     database = new Database(join(root, DATABASE_FILENAME), migrations);
@@ -87,21 +110,7 @@ describe('TaskService', () => {
   });
 
   it('从仅有资产表的旧数据库升级，保留原有主机资料', async () => {
-    const oldMigrations = join(root, 'old-migrations');
-    await mkdir(join(oldMigrations, 'meta'), { recursive: true });
-    const journal = JSON.parse(
-      await readFile(join(migrations, 'meta/_journal.json'), 'utf8'),
-    ) as { entries: { idx: number; tag: string }[] };
-    journal.entries = journal.entries.filter((entry) => entry.idx === 0);
-    await writeFile(
-      join(oldMigrations, 'meta/_journal.json'),
-      JSON.stringify(journal),
-    );
-    const tag = journal.entries[0]!.tag;
-    await copyFile(
-      join(migrations, `${tag}.sql`),
-      join(oldMigrations, `${tag}.sql`),
-    );
+    const oldMigrations = await migrationsThrough(0);
     const path = join(root, 'legacy.sqlite');
     const legacy = new Database(path, oldMigrations);
     const host = {

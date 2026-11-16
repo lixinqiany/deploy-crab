@@ -61,6 +61,7 @@ describe('任务创建 (e2e)', () => {
   const replacement = (task: Task) => ({
     name: task.name,
     description: task.description,
+    labels: task.labels,
     sourceUrl: task.sourceUrl,
     definition: task.definition,
     revision: task.revision,
@@ -70,27 +71,40 @@ describe('任务创建 (e2e)', () => {
     const catalog = (await http().get('/tasks/catalog').expect(200))
       .body as TaskCatalog;
     expect(catalog.templates).toEqual([]);
-    const task = await create(body('检查连接'));
+    const task = await create({
+      ...body('检查连接'),
+      labels: [' 巡检 ', 'SSH'],
+    });
+    expect(task.labels).toEqual(['巡检', 'SSH']);
     expect(task.definition.steps).toHaveLength(1);
     await http().get(`/tasks/${task.id}`).expect(200, task);
     await http().get('/tasks').expect(200, [task]);
     const updated = (
       await http()
         .put(`/tasks/${task.id}`)
-        .send({ ...replacement(task), name: '我的连接检查' })
+        .send({ ...replacement(task), name: '我的连接检查', labels: ['网络'] })
         .expect(200)
     ).body as Task;
     expect(updated.revision).toBe(2);
+    expect(updated.labels).toEqual(['网络']);
     await http().put(`/tasks/${task.id}`).send(replacement(task)).expect(409);
     await http().post(`/tasks/${task.id}/run`).expect(404);
     await app.close();
     await boot();
     await http().get(`/tasks/${task.id}`).expect(200, updated);
+    const cleared = (
+      await http()
+        .put(`/tasks/${task.id}`)
+        .send({ ...replacement(updated), labels: [] })
+        .expect(200)
+    ).body as Task;
+    expect(cleared.labels).toEqual([]);
     expect(probe).not.toHaveBeenCalled();
   });
 
   it('组合已有任务与脚本，保护引用并拒绝任务循环', async () => {
     const child = await create(body('child'));
+    expect(child.labels).toEqual([]);
     const parent = await create({
       name: 'parent',
       definition: {
@@ -136,6 +150,26 @@ describe('任务创建 (e2e)', () => {
 
   it('非法输入返回字段问题，名称冲突和缺失引用返回业务错误', async () => {
     await create(body('task'));
+    for (const labels of [
+      [''],
+      ['a', ' a '],
+      ['two words'],
+      ['x'.repeat(33)],
+      Array.from({ length: 21 }, (_, index) => `tag-${index}`),
+    ]) {
+      await http()
+        .post('/tasks')
+        .send({ ...body('invalid-labels'), labels })
+        .expect(400)
+        .expect((response) => {
+          const payload = response.body as {
+            code: string;
+            issues: { path: (string | number)[] }[];
+          };
+          expect(payload.code).toBe('validation_failed');
+          expect(payload.issues[0]?.path[0]).toBe('labels');
+        });
+    }
     await http().post('/tasks').send(body('TASK')).expect(409);
     await http()
       .post('/tasks')

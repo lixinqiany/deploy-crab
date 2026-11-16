@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "f55d656b-fb87-4d0d-8e26-2376bb90dbe9",
+  "id": "8ee7418d-a4e2-42bc-89af-5701cea2b513",
   "prevId": "f385ddf3-a522-41ac-aef3-323dd7c9cf99",
   "tables": {
     "cluster_member_groups": {
@@ -493,6 +493,14 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "labels": {
+          "name": "labels",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
         },
         "source_url": {
           "name": "source_url",

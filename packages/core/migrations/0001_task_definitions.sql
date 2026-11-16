@@ -13,6 +13,7 @@ CREATE TABLE `tasks` (
 	`name` text NOT NULL,
 	`name_key` text NOT NULL,
 	`description` text NOT NULL,
+	`labels` text DEFAULT '[]' NOT NULL,
 	`source_url` text,
 	`definition` text NOT NULL,
 	`revision` integer NOT NULL,
