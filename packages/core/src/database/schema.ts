@@ -5,3 +5,5 @@ export { clusterMembers } from './tables/cluster-members';
 export { clusterMemberGroups } from './tables/cluster-member-groups';
 export { tasks } from './tables/tasks';
 export { taskReferences } from './tables/task-references';
+export { sessions } from './tables/sessions';
+export { runs } from './tables/runs';

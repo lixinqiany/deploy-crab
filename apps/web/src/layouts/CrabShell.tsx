@@ -8,6 +8,7 @@ import { SvgIcon } from '@deploy-crab/ui/icon/SvgIcon';
 import { useSidebarResize } from '@deploy-crab/ui/hooks/useSidebarResize';
 import { navRoutes } from '@/routes/navigation';
 import CrabSvg from '@/assets/icon/crab.svg?react';
+import { SessionSidebar } from '@/views/sessions/SessionSidebar';
 
 const sidebarItems: SidebarItem[] = navRoutes.map(({ path, label, icon }) => ({
   key: path,
@@ -49,6 +50,7 @@ export const CrabShell = () => {
           items={sidebarItems}
           selectedKey={findSelectedKey(pathname)}
           onSelect={(key) => void navigate(key)}
+          content={<SessionSidebar collapsed={collapsed} />}
           footer={<span className="text-xs text-[#8d8d86]">v0.0.1</span>}
           collapsed={collapsed}
         />

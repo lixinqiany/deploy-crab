@@ -16,10 +16,16 @@ interface Props {
   tasks: Task[];
   value: string;
   onChange: (taskId: string) => void;
+  ariaLabel?: string;
 }
 
 /** 一个选择入口：直接搜索所有任务，或进入标签目录再选任务。 */
-export const TaskReferenceSelect = ({ tasks, value, onChange }: Props) => {
+export const TaskReferenceSelect = ({
+  tasks,
+  value,
+  onChange,
+  ariaLabel = '选择引用任务',
+}: Props) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [browseLabels, setBrowseLabels] = useState(false);
@@ -179,7 +185,7 @@ export const TaskReferenceSelect = ({ tasks, value, onChange }: Props) => {
     >
       <Button
         block
-        aria-label="选择引用任务"
+        aria-label={ariaLabel}
         className="flex items-center justify-between text-left"
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown') {

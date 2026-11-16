@@ -3,13 +3,21 @@ import {
   type Run,
 } from '@deploy-crab/contracts/execution';
 import { ConflictError } from '../errors/domain-error';
+import type { ExecutionPlan } from './definition';
 
-/** 保存记录与执行逻辑分离；持久化实现可以在此边界另行接入。 */
+/** 内存与持久化实现共用的存储边界，不参与任务调度。 */
 export abstract class RunStore {
   abstract get(id: string): Run | undefined;
   abstract list(): Run[];
-  abstract create(run: Run): void;
+  abstract create(run: Run, plan?: ExecutionPlan): void;
   abstract save(run: Run): void;
+  createMany(items: { run: Run; plan: ExecutionPlan }[]): void {
+    for (const item of items) this.create(item.run, item.plan);
+  }
+  children(id: string): Run[] {
+    return this.list().filter((run) => run.parentRunId === id);
+  }
+  flush(): void {}
 }
 
 export class MemoryRunStore extends RunStore {
@@ -41,6 +49,18 @@ export class MemoryRunStore extends RunStore {
     }
     if (this.#runs.has(run.id)) throw new ConflictError('执行 id 已存在');
     this.save(run);
+  }
+
+  override createMany(items: { run: Run; plan: ExecutionPlan }[]): void {
+    this.prune();
+    if (this.#runs.size + items.length > this.maxRuns)
+      throw new ConflictError('临时执行数量达到上限，请稍后重试');
+    if (
+      new Set(items.map(({ run }) => run.id)).size !== items.length ||
+      items.some(({ run }) => this.#runs.has(run.id))
+    )
+      throw new ConflictError('执行 id 已存在');
+    for (const { run } of items) this.save(run);
   }
 
   save(run: Run): void {

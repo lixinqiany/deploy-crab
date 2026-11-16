@@ -1,6 +1,6 @@
 import { checkAborted } from './execution-failure';
 
-/** 同一个额度覆盖整个 Step（含 hooks）；Run hooks 单独取得额度。 */
+/** 所有 Run 的叶子 Action 共用额度，等待子任务的编排节点不占用。 */
 export class Concurrency {
   #active = 0;
   readonly #waiting: (() => void)[] = [];

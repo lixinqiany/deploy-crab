@@ -1,6 +1,6 @@
 import type { TaskInput } from './task-input';
 
-/** 执行对象与持久化无关；首版运行记录仅在 server 内存中短期保留。 */
+/** 临时连接检查使用内存，Session 的执行记录持久化。 */
 export type ExecutionStatus =
   | 'queued'
   | 'running'
@@ -31,6 +31,7 @@ export interface ExecutionState {
 }
 
 export interface HookExecution extends ExecutionState {
+  childRunId?: string;
   id: string;
   key: string;
   phase: HookPhase;
@@ -38,6 +39,7 @@ export interface HookExecution extends ExecutionState {
 }
 
 export interface StepExecution extends ExecutionState {
+  childRunId?: string;
   id: string;
   title: string;
   action: string;
@@ -63,7 +65,14 @@ export interface Run extends ExecutionState {
   task: string;
   input: TaskInput;
   target: unknown;
-  retention: 'memory';
+  retention: 'memory' | 'persistent';
+  parentRunId?: string;
+  requestId?: string;
+  requestHash?: string;
+  taskId?: string;
+  taskRevision?: number;
+  targetName?: string;
+  skippedSteps?: string[];
   createdAt: string;
   dependsOn: string[];
   phase: ExecutionPhase;

@@ -33,6 +33,17 @@
   border-inline-end: none !important;
 }
 
+.fixedNav {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* antd 折叠菜单自带 80px 宽，改成跟着侧栏走；图标靠 50% 内边距自动居中 */
 .menu:global(.ant-menu-inline-collapsed) {
   width: 100%;

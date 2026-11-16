@@ -21,17 +21,20 @@ export interface SidebarProps {
   onSelect?: (key: string) => void;
   /** 底部区域，如用户信息、设置入口；折叠时隐藏 */
   footer?: ReactNode;
+  /** 导航与页脚之间的可伸缩区域，例如会话列表。 */
+  content?: ReactNode;
   /** 折叠成只剩一列图标，悬停图标显示名称 */
   collapsed?: boolean;
 }
 
-/** 侧边栏：header / 导航列表 / footer 三段，不依赖路由。 */
+/** 侧边栏：固定 header / 导航 / footer，可选 content 填满剩余高度，不依赖路由。 */
 export const Sidebar = ({
   header,
   items,
   selectedKey,
   onSelect,
   footer,
+  content,
   collapsed = false,
 }: SidebarProps) => (
   <div
@@ -40,7 +43,7 @@ export const Sidebar = ({
     }
   >
     {header != null && <div className={styles.header}>{header}</div>}
-    <nav className={styles.nav}>
+    <nav className={content != null ? styles.fixedNav : styles.nav}>
       <Menu
         mode="inline"
         inlineCollapsed={collapsed}
@@ -54,6 +57,7 @@ export const Sidebar = ({
         onClick={({ key }) => onSelect?.(key)}
       />
     </nav>
+    {content != null && <div className={styles.content}>{content}</div>}
     {footer != null && !collapsed && (
       <div className={styles.footer}>{footer}</div>
     )}

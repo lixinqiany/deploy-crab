@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { auditFields, Description, DisplayName, ResourceId } from './fields';
 import { SshScriptInput } from './ssh-script';
-import { TaskInput, TaskParameters } from './task-input';
+import { TaskInput, TaskParameters, TaskParameterName } from './task-input';
 import { TaskInputBindings } from './task-input-bindings';
 
 export const TASK_ACTIONS = [
@@ -56,6 +56,8 @@ export const TaskCall = z.discriminatedUnion('kind', [
         kind: z.literal('action'),
         action: z.literal('ssh.exec'),
         input: SshScriptInput,
+        /** 未声明时保守视为使用全部参数；空数组表示不使用任务参数。 */
+        usesInputs: z.array(TaskParameterName).max(32).optional(),
       })
       .strict(),
   ]),
@@ -123,7 +125,7 @@ export const TaskStep = z
     title: DisplayName,
     call: TaskCall,
     dependsOn: z.array(NodeKey).max(63).default([]),
-    // 只声明后续 Session 是否允许用户跳过，不代表本次已经选择跳过。
+    // 声明 Session 是否允许用户跳过，不代表本次已经选择跳过。
     skippable: z.boolean().default(false),
     timeoutMs: Timeout.default(60_000),
     hooks: TaskHooks.default(emptyTaskHooks),
@@ -144,6 +146,15 @@ export const TaskDefinition = z
   })
   .strict()
   .superRefine((definition, ctx) => {
+    for (const call of taskCalls(definition)) {
+      if (call.kind !== 'action' || call.action !== 'ssh.exec') continue;
+      for (const name of call.usesInputs ?? [])
+        if (!definition.parameters.some((parameter) => parameter.name === name))
+          ctx.addIssue({
+            code: 'custom',
+            message: `脚本使用了未声明的参数「${name}」`,
+          });
+    }
     const byId = new Map<string, TaskStep>();
     definition.steps.forEach((step, index) => {
       if (byId.has(step.id))

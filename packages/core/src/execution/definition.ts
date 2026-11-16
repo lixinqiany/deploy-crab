@@ -36,6 +36,8 @@ export interface ActionCall {
   action: string;
   input?: unknown;
   timeoutMs?: number;
+  task?: { plan: ExecutionPlan; input: TaskInput };
+  usesInputs?: string[];
 }
 
 export interface HookDefinition extends ActionCall {
@@ -49,6 +51,7 @@ export interface StepDefinition extends ActionCall {
   title: string;
   dependsOn?: string[];
   hooks?: Hooks;
+  skip?: boolean;
 }
 
 export interface ExecutionPlan {
@@ -57,6 +60,10 @@ export interface ExecutionPlan {
   target: unknown;
   steps: StepDefinition[];
   hooks?: Hooks;
+  taskId?: string;
+  taskRevision?: number;
+  targetName?: string;
+  skippedSteps?: string[];
 }
 
 /** 代码生成执行计划的适配器；用户保存的流程定义见 contracts/task。 */

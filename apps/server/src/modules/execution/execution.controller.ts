@@ -16,6 +16,11 @@ export class ExecutionController {
     return this.execution.get(id);
   }
 
+  @Get(':id/tree')
+  tree(@Param() { id }: RunParamsDto) {
+    return this.execution.tree(id);
+  }
+
   @Post(':id/cancel')
   @HttpCode(202)
   cancel(@Param() { id }: RunParamsDto): Run {

@@ -29,6 +29,7 @@ import {
   ExecutionFailure,
 } from './execution-failure';
 import type { RunStore } from './run-store';
+import type { RunTree } from '@deploy-crab/contracts/session';
 
 const PHASES: HookPhase[] = ['before', 'afterSuccess', 'finally'];
 const initialState = (): ExecutionState => ({
@@ -50,11 +51,14 @@ export interface SubmitOptions {
   sessionId?: string | null;
   source?: string;
   dependsOn?: string[];
+  parentRunId?: string;
+  requestId?: string;
+  requestHash?: string;
 }
 
 /**
  * 单进程执行内核：两层静态依赖、受控并发、生命周期和结果。
- * 一个 Run 一个目标；存储与 Nest/HTTP/SSH 解耦。首版只接 MemoryRunStore。
+ * 一个 Run 一个目标；引用任务拥有子 Run，编排不占用叶子 Action 的并发槽。
  */
 export class ExecutionService {
   readonly #pending = new Map<string, PendingRun>();
@@ -66,6 +70,7 @@ export class ExecutionService {
   readonly #slots: Concurrency;
   #scheduled = false;
   #closed = false;
+  #outputSequence = 0;
 
   constructor(
     private readonly actions: ActionRegistry,
@@ -76,7 +81,29 @@ export class ExecutionService {
   }
 
   submit(definition: ExecutionPlan, options: SubmitOptions = {}): Run {
+    return this.submitBatch([{ definition, options }])[0]!;
+  }
+
+  /** 所有计划先校验，全部记录原子写入成功后才进入调度，避免多主机部分提交。 */
+  submitBatch(
+    items: { definition: ExecutionPlan; options: SubmitOptions }[],
+  ): Run[] {
     if (this.#closed) throw new ConflictError('执行服务已关闭');
+    if (this.#pending.size + this.#active.size + items.length > 512)
+      throw new ConflictError('执行队列已满，请等待已有任务完成');
+    const prepared = items.map(({ definition, options }) =>
+      this.prepare(definition, options),
+    );
+    this.store.createMany(prepared);
+    for (const item of prepared) this.#pending.set(item.run.id, item);
+    this.schedule();
+    return prepared.map(({ run }) => structuredClone(run));
+  }
+
+  private prepare(
+    definition: ExecutionPlan,
+    options: SubmitOptions,
+  ): PendingRun {
     const plan = structuredClone(definition);
     this.validate(plan);
     const { input, issues } = resolveTaskInput(
@@ -105,7 +132,16 @@ export class ExecutionService {
       sessionId: options.sessionId ?? null,
       source: options.source ?? 'internal',
       target: plan.target,
-      retention: 'memory',
+      retention: options.sessionId ? 'persistent' : 'memory',
+      ...(options.parentRunId ? { parentRunId: options.parentRunId } : {}),
+      ...(options.requestId ? { requestId: options.requestId } : {}),
+      ...(options.requestHash ? { requestHash: options.requestHash } : {}),
+      ...(plan.taskId ? { taskId: plan.taskId } : {}),
+      ...(plan.taskRevision !== undefined
+        ? { taskRevision: plan.taskRevision }
+        : {}),
+      ...(plan.targetName ? { targetName: plan.targetName } : {}),
+      ...(plan.skippedSteps ? { skippedSteps: plan.skippedSteps } : {}),
       createdAt: this.now(),
       dependsOn,
       phase: 'before',
@@ -123,16 +159,20 @@ export class ExecutionService {
       output: [],
       outputTruncated: false,
     };
-    this.store.create(run);
-    this.#pending.set(run.id, { run, plan, controller: new AbortController() });
-    this.schedule();
-    return structuredClone(run);
+    return { run, plan, controller: new AbortController() };
   }
 
   get(id: string): Run {
     const run = this.store.get(id);
-    if (!run) throw new NotFoundError('临时执行不存在或已过期，请重新检查');
+    if (!run) throw new NotFoundError('执行不存在或临时记录已过期');
     return run;
+  }
+
+  tree(id: string): RunTree {
+    return {
+      run: this.get(id),
+      children: this.store.children(id).map((child) => this.tree(child.id)),
+    };
   }
 
   cancel(id: string): Run {
@@ -161,6 +201,7 @@ export class ExecutionService {
     for (const id of [...this.#pending.keys(), ...this.#active.keys()])
       this.cancel(id);
     await Promise.all([...this.#active.values()].map((item) => item.done));
+    this.store.flush();
     this.#listeners.clear();
   }
 
@@ -247,21 +288,29 @@ export class ExecutionService {
           signal.aborted ||
           dependencies.some(
             (dep) =>
-              isExecutionFinished(dep.status) && dep.status !== 'succeeded',
+              isExecutionFinished(dep.status) &&
+              dep.status !== 'succeeded' &&
+              dep.status !== 'skipped',
           )
         ) {
           pending.delete(step.id);
           this.end(step, signal.aborted ? 'cancelled' : 'blocked');
           this.publish(run);
-        } else if (dependencies.every((dep) => dep.status === 'succeeded')) {
+        } else if (
+          dependencies.every(
+            (dep) => dep.status === 'succeeded' || dep.status === 'skipped',
+          )
+        ) {
           pending.delete(step.id);
           const definition = plan.steps.find((s) => s.id === step.id)!;
-          const done = this.#slots
-            .use(signal, () =>
-              this.lifecycle(run, step, definition.hooks, signal, () =>
-                this.invoke(run, step.id, null, definition, signal),
-              ),
-            )
+          if (definition.skip) {
+            this.end(step, 'skipped');
+            this.publish(run);
+            continue;
+          }
+          const done = this.lifecycle(run, step, definition.hooks, signal, () =>
+            this.invoke(run, step.id, null, definition, signal),
+          )
             .catch((error: unknown) => {
               step.errors.push(executionError(error));
               this.end(step, this.failureStatus(step.errors));
@@ -285,7 +334,11 @@ export class ExecutionService {
       );
     }
     checkAborted(signal);
-    if (run.steps.some((step) => step.status !== 'succeeded'))
+    if (
+      run.steps.some(
+        (step) => step.status !== 'succeeded' && step.status !== 'skipped',
+      )
+    )
       throw new ExecutionFailure('step_blocked', '部分步骤未能完成');
   }
 
@@ -384,8 +437,7 @@ export class ExecutionService {
         }
       };
       try {
-        if (owner === run) await this.#slots.use(signal, execute);
-        else await execute();
+        await execute();
       } catch (error) {
         if (phase !== 'finally') throw error;
         owner.errors.push(executionError(error));
@@ -394,6 +446,21 @@ export class ExecutionService {
   }
 
   private async invoke(
+    run: Run,
+    stepId: string | null,
+    hookId: string | null,
+    call: ActionCall,
+    signal: AbortSignal,
+  ): Promise<unknown> {
+    // 编排节点不占 SSH 并发槽，否则并发为 1 时父任务会等待拿不到槽的子任务。
+    return call.task
+      ? this.invokeCall(run, stepId, hookId, call, signal)
+      : this.#slots.use(signal, () =>
+          this.invokeCall(run, stepId, hookId, call, signal),
+        );
+  }
+
+  private async invokeCall(
     run: Run,
     stepId: string | null,
     hookId: string | null,
@@ -414,10 +481,55 @@ export class ExecutionService {
     try {
       const owner =
         stepId === null ? run : run.steps.find((step) => step.id === stepId)!;
+      if (call.task) {
+        const child = this.prepare(call.task.plan, {
+          input: call.task.input,
+          sessionId: run.sessionId,
+          source: 'task.reference',
+          parentRunId: run.id,
+        });
+        this.store.createMany([child]);
+        const record = hookId
+          ? owner.hooks.find((hook) => hook.id === hookId)!
+          : owner;
+        if (record === run) throw new Error('嵌套任务必须属于步骤或钩子');
+        (record as StepExecution | HookExecution).childRunId = child.run.id;
+        this.publish(run);
+        const cancelChild = () =>
+          child.controller.abort(controller.signal.reason);
+        controller.signal.addEventListener('abort', cancelChild, {
+          once: true,
+        });
+        if (controller.signal.aborted) cancelChild();
+        const done = Promise.resolve()
+          .then(() => this.execute(child))
+          .finally(() => this.#active.delete(child.run.id));
+        this.#active.set(child.run.id, { controller: child.controller, done });
+        try {
+          await done;
+        } finally {
+          controller.signal.removeEventListener('abort', cancelChild);
+        }
+        checkAborted(controller.signal);
+        if (child.run.status !== 'succeeded')
+          throw new ExecutionFailure(
+            'child_task_failed',
+            `子任务「${child.run.task}」未成功：${child.run.errors[0]?.message ?? child.run.status}`,
+          );
+        return { childRunId: child.run.id };
+      }
       const result = await this.actions
         .get(call.action)
         .execute(call.input ?? null, {
-          taskInput: structuredClone(run.input),
+          taskInput: structuredClone(
+            call.usesInputs
+              ? Object.fromEntries(
+                  Object.entries(run.input).filter(([name]) =>
+                    call.usesInputs!.includes(name),
+                  ),
+                )
+              : run.input,
+          ),
           runId: run.id,
           stepId,
           target: structuredClone(run.target),
@@ -437,7 +549,8 @@ export class ExecutionService {
           output: (stream, text) => {
             if (controller.signal.aborted || isExecutionFinished(run.status))
               return;
-            const sequence = (run.output.at(-1)?.sequence ?? 0) + 1;
+            // 同一执行树共用时序，合并父子输出时不依赖毫秒时间戳的精度。
+            const sequence = ++this.#outputSequence;
             run.output.push({
               sequence,
               at: this.now(),
@@ -448,8 +561,9 @@ export class ExecutionService {
             });
             if (text.length > 16_384) run.outputTruncated = true;
             while (
-              run.output.length > 128 ||
-              run.output.reduce((n, item) => n + item.text.length, 0) > 32_768
+              run.output.length > (run.sessionId ? 512 : 128) ||
+              run.output.reduce((n, item) => n + item.text.length, 0) >
+                (run.sessionId ? 262_144 : 32_768)
             ) {
               run.output.shift();
               run.outputTruncated = true;
@@ -515,14 +629,15 @@ export class ExecutionService {
     if (!plan.steps.length || plan.steps.length > 64)
       throw new Error('任务必须包含 1–64 个步骤');
     const calls = (call: ActionCall) => {
-      this.actions.get(call.action);
+      if (call.task) this.validate(call.task.plan);
+      else if (call.action !== 'task.skipped') this.actions.get(call.action);
       if (
         call.timeoutMs !== undefined &&
         (!Number.isInteger(call.timeoutMs) ||
           call.timeoutMs < 1 ||
-          call.timeoutMs > 300_000)
+          call.timeoutMs > 3_600_000)
       )
-        throw new Error('执行超时必须在 1–300000 毫秒之间');
+        throw new Error('执行超时必须在 1–3600000 毫秒之间');
     };
     const hooks = (definitions?: Hooks) => {
       for (const phase of PHASES) {

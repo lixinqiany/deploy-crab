@@ -4,7 +4,7 @@ Node 侧共享的业务逻辑。本包直接导出 TypeScript 源码，由 serve
 
 ## 数据存储
 
-主机、集群和任务定义通过 Drizzle ORM 和 better-sqlite3 保存到实例数据目录中的 `deploy-crab.sqlite`。资产使用 `hosts`、`clusters`、`cluster_members`、`cluster_member_groups`，任务定义使用 `tasks`、`task_references`，另外有 Drizzle 的迁移记录表。旧 YAML 文档存储已移除，不做自动导入。
+主机、集群和任务定义通过 Drizzle ORM 和 better-sqlite3 保存到实例数据目录中的 `deploy-crab.sqlite`。资产使用 `hosts`、`clusters`、`cluster_members`、`cluster_member_groups`，任务定义使用 `tasks`、`task_references`，会话及其执行记录使用 `sessions`、`runs`，另外有 Drizzle 的迁移记录表。旧 YAML 文档存储已移除，不做自动导入。
 
 数据目录沿用 `--data-dir`，默认为 `~/.deploy-crab/`，开发脚本使用仓库根目录的 `.deploy-crab/`。SQLite 在连接期间可能创建 `deploy-crab.sqlite-wal` 和 `deploy-crab.sqlite-shm`；这些由数据库管理，不是额外的业务文件。备份时停止服务后复制实例数据目录，不要在运行中手工删除 WAL 或 SHM。
 
@@ -50,9 +50,9 @@ Server 的 Rspack 配置将该目录复制到 `.dev/migrations/` 和 `dist/migra
 
 定义不绑定主机或 Session，不保存执行状态。任务钩子、步骤钩子支持 `before`、`afterSuccess`、`finally`，同一阶段按数组顺序保存。步骤的数组顺序用于展示，调度关系由 `dependsOn` 表达：新增步骤默认依赖上一步，用户可以清除或选择多个依赖。
 
-步骤可声明 `skippable: true`，表示允许用户在后续 Session 的执行配置中选择跳过。默认值为 `false`，旧定义缺少该字段时也按 `false` 读取；即使允许跳过，默认仍然执行。该字段属于步骤（包括引用任务的步骤），不属于被引用任务本身，也不是执行状态。本阶段只保存并展示标记；Session 的具体选择和跳过调度尚未实现，现有执行内核不因该标记自动跳过。字段存于现有 `tasks.definition` JSON，不需要 migration。
+步骤可声明 `skippable: true`，表示允许用户在后续 Session 的执行配置中选择跳过。默认值为 `false`，旧定义缺少该字段时也按 `false` 读取；即使允许跳过，默认仍然执行。该字段属于步骤（包括引用任务的步骤），不属于被引用任务本身，也不是执行状态。Session 可以按调用位置选择跳过，包括引用任务内部的步骤。被跳过步骤不执行主体与钩子，不解析其子任务参数；它仍等待前置依赖完成，之后按 `skipped` 放行后续步骤。前置失败仍然阻塞，不会通过跳过绕开失败。字段存于现有 `tasks.definition` JSON，不需要 migration。
 
-`TaskService` 在单个写事务中检查名称、任务引用、循环和修改版本。`tasks.definition` 保存完整的 JSON 定义，`task_references` 索引步骤与全部钩子中的任务引用，外键和业务检查共同保护删除。步骤依赖循环由共享 Schema 检查，任务引用循环由 Service 检查。修改采用完整替换并提交当前 `revision`；过期版本返回 409，避免不同窗口互相覆盖。`revision` 是修改计数，当前没有历史版本恢复或运行版本锁定。
+`TaskService` 在单个写事务中检查名称、任务引用、循环和修改版本。`tasks.definition` 保存完整的 JSON 定义，`task_references` 索引步骤与全部钩子中的任务引用，外键和业务检查共同保护删除。步骤依赖循环由共享 Schema 检查，任务引用循环由 Service 检查。修改采用完整替换并提交当前 `revision`；过期版本返回 409，避免不同窗口互相覆盖。`revision` 是修改计数。Session 提交会校验本次看到的全部任务版本，并冻结编译后的计划、参数与连接快照；不提供任务库历史版本恢复。
 
 | 接口 | 用途 |
 | --- | --- |
@@ -64,7 +64,7 @@ Server 的 Rspack 配置将该目录复制到 `.dev/migrations/` 和 `dist/migra
 
 限制：每个任务 1–64 个步骤、每个阶段最多 8 个钩子、脚本最多 16000 字符、定义序列化后最多 24000 字符、单次调用超时配置 1 秒至 1 小时。步骤输出绑定和动态表达式尚未加入。
 
-任务库目前只提供创建与保存，没有已保存任务的运行接口、子 Run 或 Session 功能。`ssh.exec` 已注册到执行内核，可由代码生成的执行计划调用。保存任务不会调用 `ExecutionService` 或 SSH。以后需增加已保存定义到计划的绑定、子任务执行与取消传播，并统一编辑器与执行内核的超时上限（内核当前最多 5 分钟），才能运行这些定义。
+任务库保存纯定义；从 Session 选择任务与主机后，由 `compileStoredTask` 编译再交给执行内核。保存定义不会执行 SSH。子任务拥有独立 Run，父步骤或钩子等待子 Run 及其收尾结束，再汇总成功或失败；取消和超时向下传播并等待资源释放。内核与任务编辑器的超时上限统一为 1 小时。
 
 ### 参数定义与调用值
 
@@ -86,15 +86,15 @@ Server 的 Rspack 配置将该目录复制到 `.dev/migrations/` 和 `dist/migra
 
 前后端用 `validateTaskInputMapping(parentParameters, childParameters, call)` 校验来源、目标和类型。相同类型可以绑定，任意声明类型也可以传入 JSON 字段；JSON 来源不能直接绑定到 string/number/boolean。未绑定的必填字段必须提供有效固定值；绑定的必填字段允许先保存定义，实际值在调用时校验。修改父参数或被引用任务的声明如果会使已有映射失效，整个更新事务会拒绝并提示调用者名称。
 
-共享函数 `resolveTaskInputMapping(parentParameters, childParameters, call, parentInput)` 供后续子任务编排使用：先将传入值覆盖父默认值，再按显式绑定传给子任务，最后合并子默认值并校验必填和类型。父字段缺失才不传；false、0、空字符串、null 均保留，不会触发默认值回退。必填字符串不能是空白，必填 JSON 不能是 null。返回 `issues` 非空时禁止派发子任务。可选来源绑定到必填目标允许保存，但调用时缺值仍会失败。每层只读取直接父任务的参数，不隐式继承同名字段；绑定不修改任何任务的默认值。
+共享函数 `resolveTaskInputMapping(parentParameters, childParameters, call, parentInput)` 用于子任务编排：先将传入值覆盖父默认值，再按显式绑定传给子任务，最后合并子默认值并校验必填和类型。父字段缺失才不传；false、0、空字符串、null 均保留，不会触发默认值回退。必填字符串不能是空白，必填 JSON 不能是 null。返回 `issues` 非空时禁止派发子任务。可选来源绑定到必填目标允许保存，但调用时缺值仍会失败。每层只读取直接父任务的参数，不隐式继承同名字段；绑定不修改任何任务的默认值。
 
-输入、映射展开及合并默认值后的快照最多 16000 字符；声明、固定值和绑定一起计入完整定义的 24000 字符上限。本阶段完成映射保存、校验和解析函数，没有接入已保存任务的运行。未来 Session 跳过某一步时应先决定跳过，再对需要调用的子任务解析输入；当前不实现跳过调度。
+输入、映射展开及合并默认值后的快照最多 16000 字符；声明、固定值和绑定一起计入完整定义的 24000 字符上限。Session 先确定本次保留的步骤，再解析会执行的调用。全部嵌套调用通过参数校验后才派发，避免父步骤已经修改服务器才发现子步骤缺参。
 
-Session 参数交互的后续规则：根据本次保留的步骤及钩子计算参数使用方的并集。同一父参数供多处使用时，只要还有使用方就保留输入项；所有已知使用方都跳过后，才可将其收起为“本次未使用”，并保留表单草稿，恢复步骤时还原。必填要求由仍会执行的使用方共同决定。当前参数的 `required` 是所属任务的整体契约，不因某个子步骤跳过自动放宽；只用于可跳过子任务的转发参数应在父任务声明为可选，再由实际调用的子任务校验必填。脚本可直接读取任意任务参数，不能靠字符串扫描推断使用关系；后续要支持这类参数自动收起，需要显式声明脚本使用的参数，未声明前保守保留。以上是 Session 阶段的交互约定，当前未增加运行界面或动态跳过校验。
+Session 参数交互由共享的 `configureTask` 计算：根据保留的步骤及钩子取参数使用方的并集。同一参数只要还有使用方就保留；所有使用方被跳过后收起为“本次未使用”，不校验也不传入，原始表单草稿仍保留。必填标记在参数仍被使用时生效；子任务的有效必填要求会沿绑定向上传递，父/子默认值可以满足相应的缺值回退。脚本的 `usesInputs` 未声明时保守使用全部参数，显式数组表示只使用选中字段，`[]` 表示不使用任务参数；执行时也只注入声明范围内的字段。无需扫描脚本文本猜测使用关系。
 
 定义及引用值仍保存于 SQLite 现有 `tasks.definition` JSON 列，无需新表或 migration。旧任务没有 `parameters` 时读取为 `[]`；旧调用如果传入未声明字段，需要在被引用任务声明该字段或移除值后才能再次保存。
 
-执行内核的 `ExecutionPlan.parameters` 使用相同字段声明，`submit(plan, { input })` 在入队前校验并合并默认值，然后在 `Run.input` 中保存独立快照。未声明参数的计划按空声明处理。每次 Action/Hook 收到独立的 `context.taskInput`，不会因一个步骤修改对象而污染其他步骤。Action 的 `input` 仍然是能力配置（例如脚本、Shell、目录）。引用的 `input` 属于被引用任务；不隐式继承父任务参数，不支持 `{{...}}` 插值；当前先保存这些值，子任务编排接入时使用相同传参契约。
+执行内核的 `ExecutionPlan.parameters` 使用相同字段声明，`submit(plan, { input })` 在入队前校验并合并默认值，然后在 `Run.input` 中保存独立快照。未声明参数的计划按空声明处理。每次 Action/Hook 收到独立的 `context.taskInput`，不会因一个步骤修改对象而污染其他步骤。Action 的 `input` 仍然是能力配置（例如脚本、Shell、目录）。引用的 `input` 属于被引用任务；不隐式继承父任务参数，不支持 `{{...}}` 插值；子任务使用各自解析后的独立输入快照。
 
 `ssh.exec` 把校验并合并默认值后的 `context.taskInput` 序列化为远端环境变量 `DEPLOY_CRAB_INPUT`；没有参数或默认值时为 `{}`。参数经过 Shell 字面量引用后与脚本一起从 SSH stdin 发送，不出现在 SSH 命令行参数中，不做变量名展开、模板替换或 `eval`。脚本编辑器提供根据当前参数生成的可复制读取示例。例如目标机器有 Python 3 时：
 
@@ -107,9 +107,9 @@ print(mirror)
 PY
 ```
 
-参数目前是普通配置数据，会出现在定义和内存 Run 快照中，不是密钥存储；不要把凭据写入任务定义。
+参数目前是普通配置数据，会出现在定义和 Run 快照中，不是密钥存储；不要把凭据写入任务定义。
 
-## 执行骨架（现有主机连接检查）
+## 执行内核与主机连接检查
 
 首个入口是主机表单的“测试连接”：当前草稿 → `HostService.checkConnection()` → `host.check` Task → Run → `check-connection` Step → `ssh.probe` Action → `SshRunner`。检查无需保存主机，也无需创建 Session。
 
@@ -120,7 +120,7 @@ PY
 | Run | 一次 Task 派发，冻结一个目标及其跳板链，拥有独立 id 和生命周期 |
 | Step | Run 内的一次 Action 调用，有自己的参数、依赖、结果和钩子 |
 | Hook | 附着在 Run 或 Step 上的 Action 调用，也记录状态和错误 |
-| Session | 目前只预留可空的 `sessionId`，不参与调度 |
+| Session | 用户命名的操作上下文，保存配置和 Run 历史；依赖仍由 Run/Step 显式声明 |
 
 执行代码位于 `src/execution/`，与 Nest、数据库和 SSH 实现解耦。`src/tasks/host-check.ts` 是 TaskPlanner 示例，`src/actions/ssh-probe.ts` 是 Action 示例；`src/ssh/` 处理连接快照和 OpenSSH 进程。
 
@@ -128,7 +128,7 @@ PY
 
 `ExecutionService.submit(plan, { sessionId, source, dependsOn, input })` 创建并立即返回排队中的 Run。`get(id)` 查询快照，`cancel(id)` 请求取消，`subscribe(listener)` 观察变化，`close()` 取消执行并等待资源释放。
 
-Run 的 `dependsOn` 引用其他已存在的 Run；Step 的 `dependsOn` 只引用同一 Run 内的 Step id。依赖不可在提交后修改，步骤图必须无环且引用有效。所有依赖成功后才能启动；前置节点失败或取消时，依赖节点标记为 `blocked`，无依赖分支继续执行。两台机器分别创建两个 Run，不配置依赖即可并发。并发额度默认 4，由全部 Run 共用；一个额度覆盖整个 Step 的主体和钩子，Run 自身的钩子独立取得额度。
+Run 的 `dependsOn` 引用其他已存在的 Run；Step 的 `dependsOn` 只引用同一 Run 内的 Step id。依赖不可在提交后修改，步骤图必须无环且引用有效。所有依赖成功后才能启动；前置节点失败或取消时，依赖节点标记为 `blocked`，无依赖分支继续执行。两台机器分别创建两个 Run，不配置依赖即可并发。并发额度默认 4，由全部 Run 共用；额度按叶子 Action 调用取得；等待子任务的编排节点不占槽，防止并发为 1 时死锁。任务钩子和步骤钩子同样受共享并发限制。
 
 Run 和 Step 使用相同的生命周期：
 
@@ -167,9 +167,9 @@ Action 必须响应 `context.signal`，结束自身操作、释放资源后才 s
 
 ### 临时记录与 HTTP
 
-执行记录只启用 `MemoryRunStore`：最多保留 200 个 Run，完成后保留 10 分钟，在读写时清理；仍被未结束 Run 依赖的记录暂不清理。输出保留最多 128 块、32,768 个字符，超出时保留末尾并标记截断。运行记录没有 SQLite 表、每次执行的 JSON 文件、持久日志或 activity 目录；上文的任务定义表保存可复用的流程配置。
+独立连接检查使用 `MemoryRunStore`：最多保留 200 个 Run，完成后保留 10 分钟，在读写时清理；仍被未结束 Run 依赖的记录暂不清理。输出保留最多 128 块、32,768 个字符，超出时保留末尾并标记截断。上述规则只适用于独立连接检查。Session 使用下述 SQLite 持久记录。
 
-`sessionId: null` 表示没有会话归属，`retention: 'memory'` 表示临时保留，两者是独立含义。服务重启后临时记录消失；关闭抽屉不会取消已提交的检查。后续持久执行需要补充保留策略、SQLite RunStore 和重启中断处理；当前不提供恢复执行，`interrupted` 仅预留状态。
+`sessionId: null` 表示没有会话归属，`retention: 'memory'` 表示临时保留，两者是独立含义。服务重启后临时记录消失；关闭抽屉不会取消已提交的检查。Session 使用 `PersistentRunStore`；未结束的持久记录在服务启动时转为 `interrupted`，不自动重跑远端操作。
 
 | HTTP 接口 | 用途 |
 | --- | --- |
@@ -187,7 +187,26 @@ Action 必须响应 `context.signal`，结束自身操作、释放资源后才 s
 
 配置隔离于用户的 `~/.ssh/config`，跳板每一跳使用各自的地址、用户和认证。保留严格主机指纹验证，使用运行节点的默认 known_hosts；首次连接需先在运行节点核实并信任指纹。未提供自动信任、密码交互或指纹确认界面。常见错误区分为未信任指纹、指纹变化、认证失败、超时、拒绝连接和名称解析失败，并提供原始诊断输出。
 
-新增能力时先实现并注册 Action，再由 Task 编排 Step。当前 UI 运行入口仍只有 `host.check` / `ssh.probe`；`ssh.exec` 的参数通道已由内核测试覆盖。已保存任务运行、重试、跨进程队列和持久恢复留待实际业务需要时扩展。
+新增能力时先实现并注册 Action，再由 Task 编排 Step。UI 支持独立连接检查和 Session 任务执行。自动重试、跨进程队列和恢复远端进程不在当前实现范围内。
+
+## Session 与持久执行
+
+侧栏按 Header / 导航 / 会话列表 / Footer 排列，会话列表占满剩余高度并独立滚动。用户填写会话标题，可以重命名。Session 保存执行配置草稿及历史，一次可提交 1–32 台主机；每台主机一个顶层 Run，同一会话可有多个并发 Run，也可选择当前会话已有顶层 Run 作为成功前置条件。
+
+`POST /api/sessions/:id/runs` 接收 `requestId`、`taskId`、`taskRevisions`、`hostIds`、`input`、`skippedSteps` 和 `dependsOn`。先在一致读取快照中验证版本、目标、全部有效参数和嵌套定义，再原子保存整个批次，最后调度。重试相同 `requestId` 和请求内容返回原 Run，不重复执行；复用标识却修改内容返回 409。最多 8 层任务引用、展开最多 512 个调用。可跳过路径按调用位置隔离，例如 `steps.configure.task.steps.prepare`，同一任务被引用两次时可以分别配置。
+
+`0002_sessions_and_runs` 增加 `sessions`、`runs` 表。`runs.plan` 保存编译后的冻结计划，`runs.snapshot` 保存步骤、钩子、输入、目标及有限输出。子 Run 通过 `parent_run_id` 关联。运行快照最多每 250ms 合并落盘，创建与终态同步写入；服务关闭等待取消收尾后 flush。Session 每个 Run 保留最近 512 块 / 262144 字符的输出，单块最多 16384 字符，截断会在界面提示；尚不提供完整日志归档。重启将未结束记录标为中断，不自动继续安装或重复执行。取消只保证本地 SSH 进程结束，远端已产生的修改不回滚。
+
+会话标题与配置更新带 `revision` 防止覆盖其他窗口；草稿允许保留未完成的 JSON，提交执行时才检查有效参数。界面显式保存配置，执行前也会保存，离开未保存配置时提示。删除仍有活动 Run 的会话返回 409；删除已结束会话会级联清除其执行历史，不删除任务库定义或撤销服务器修改。
+
+| 接口 | 用途 |
+| --- | --- |
+| `GET/POST /api/sessions` | 列出会话摘要 / 创建用户命名的会话 |
+| `GET/PATCH/DELETE /api/sessions/:id` | 读取 / 更新标题与草稿 / 删除 |
+| `GET /api/sessions/:id/runs?before=<runId>&limit=20` | 顶层执行记录游标分页，单页最多 50 |
+| `POST /api/sessions/:id/runs` | 提交一个或多个目标，202 返回 Run |
+| `GET /api/runs/:id/tree` | 步骤、钩子与子 Run 的执行树和输出 |
+| `POST /api/runs/:id/cancel` | 请求取消，继续轮询直到收尾结束 |
 
 ## 验证
 

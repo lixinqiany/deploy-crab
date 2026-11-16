@@ -135,7 +135,46 @@ export const TaskCallEditor = ({
             }
           />
         </Form.Item>
-        <TaskScriptHelp parameters={parameters} />
+        <Form.Item
+          label="脚本使用的任务参数"
+          extra="默认使用全部参数。明确选择后，Session 可根据跳过的步骤收起未使用参数；脚本也只会收到选中的字段。"
+        >
+          <Segmented
+            block
+            value={call.usesInputs === undefined ? 'all' : 'selected'}
+            options={[
+              { value: 'all', label: '全部参数' },
+              { value: 'selected', label: '明确选择' },
+            ]}
+            onChange={(mode) => {
+              const { usesInputs: _usesInputs, ...base } = call;
+              onChange(mode === 'all' ? base : { ...base, usesInputs: [] });
+            }}
+          />
+          {call.usesInputs !== undefined && (
+            <Select
+              className="mt-2 w-full"
+              aria-label="脚本使用的参数"
+              mode="multiple"
+              value={call.usesInputs}
+              placeholder="不选择表示此脚本不使用任务参数"
+              options={parameters.map((p) => ({
+                value: p.name,
+                label: p.title ? `${p.title} · ${p.name}` : p.name,
+              }))}
+              onChange={(usesInputs: string[]) =>
+                onChange({ ...call, usesInputs })
+              }
+            />
+          )}
+        </Form.Item>
+        <TaskScriptHelp
+          parameters={parameters.filter(
+            (parameter) =>
+              call.usesInputs === undefined ||
+              call.usesInputs.includes(parameter.name),
+          )}
+        />
       </>
     )}
   </>

@@ -441,7 +441,7 @@ export const TaskEditor = ({
                 </Form.Item>
                 <Form.Item
                   label="允许跳过"
-                  extra="默认执行；开启后，可在后续 Session 执行时选择跳过这一步。"
+                  extra="默认执行；开启后，可在 Session 执行时选择跳过这一步。"
                 >
                   <Switch
                     aria-label="步骤可跳过"
